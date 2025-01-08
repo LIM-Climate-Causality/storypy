@@ -9,4 +9,4 @@ Before installing the climstory python package, users need to setup Esmvaltool t
 ```pip install --upgrade .```
 
 - Uninstall the package
-```pip uninstall climstory```
+```pip uninstall storypy```

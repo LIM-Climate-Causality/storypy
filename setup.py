@@ -8,6 +8,7 @@ setup(
     author_email='richard.alawode@uni-leipzig.de',
     license='MIT',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=[
         'xarray',
         'matplotlib',
@@ -20,9 +21,8 @@ setup(
         'regionmask',
         'scikit-learn'
     ],
-    url='',
+    url='https://github.com/LIM-Climate-Causality/storypy',
     classifiers=[
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
