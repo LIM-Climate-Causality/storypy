@@ -52,15 +52,15 @@ def read_ua_regression_coefficients_relative_importance():
 # Reading csv files
 def read_drivers():
     data_path = pkg_resources.resource_filename('storypy', 'data/remote_drivers/drivers.csv')
-    return pd.read_csv(data_path)
+    return pd.read_csv(data_path, index_col=0)
 
 def read_scaled_drivers():
     data_path = pkg_resources.resource_filename('storypy', 'data/remote_drivers/scaled_drivers.csv')
-    return pd.read_csv(data_path)
+    return pd.read_csv(data_path, index_col=0)
 
 def read_scaled_standardized_drivers():
     data_path = pkg_resources.resource_filename('storypy', 'data/remote_drivers/scaled_standardized_drivers.csv')
-    return pd.read_csv(data_path)
+    return pd.read_csv(data_path, index_col=0)
 
 
 

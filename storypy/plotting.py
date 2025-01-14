@@ -1,4 +1,5 @@
-from .utils import np, xr, plt, ccrs
+from .utils import np, xr, plt, ccrs, gridspec, cfeature
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 # Plotting function with stippling
 
@@ -238,4 +239,111 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
     
     # Show the figure
+    plt.show()
+
+
+def create_five_panel_figure(map_data, extents, levels, colormaps, titles, white_range=(-0.05, 0.05)):
+    """
+    Creates a figure with five panels: one in the center and four around it (at the corners).
+    A single colorbar is added below all panels.
+
+    Parameters:
+        map_data (list): A list of 5 data arrays to be plotted as maps.
+        extents (list): A list of tuples for map extents [(lon_min, lon_max, lat_min, lat_max), ...].
+        levels (list): A list of level arrays for contourf or pcolormesh.
+        colormaps (list): A list of colormaps to use for each map.
+        titles (list): A list of titles for the subplots.
+        white_range (tuple): The range of values to make white (min, max).
+
+    Returns:
+        fig: The created matplotlib figure.
+    """
+    # Create the figure and GridSpec layout
+    fig = plt.figure(figsize=(10, 10))
+    gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
+    
+    # Define subplot positions for the maps
+    subplot_positions = [(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]  # Corners and center
+    
+    # Keep track of the mappable objects for the colorbar
+    mappable = None
+    
+    for i, pos in enumerate(subplot_positions):
+        # Add a GeoAxes at the specified position
+        ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
+        lon_min, lon_max, lat_min, lat_max = extents[i]
+        
+        # Set map extent
+        ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
+        
+        # Add map features
+        ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
+        ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='--')
+        ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
+        
+        # Extract the data
+        data = map_data[i]
+        
+        # Create a custom colormap
+        base_cmap = plt.get_cmap(colormaps[i])
+        colors = base_cmap(np.linspace(0, 1, 256))
+        
+        # Mask values within the white range
+        white_min, white_max = white_range
+        white_mask = (levels[i] >= white_min) & (levels[i] <= white_max)
+        for j in range(len(levels[i]) - 1):
+            if white_mask[j]:
+                colors[j, :] = [1, 1, 1, 1]  # Set white color for the range
+        
+        custom_cmap = ListedColormap(colors)
+        
+        # Plot the data
+        norm = BoundaryNorm(levels[i], ncolors=custom_cmap.N, clip=True)
+        im = ax.contourf(data.lon, data.lat, data, levels=levels[i], cmap=custom_cmap, norm=norm, transform=ccrs.PlateCarree())
+        
+        # Set the title for each subplot
+        ax.set_title(titles[i], fontsize=10, pad=4)
+        
+        # Keep the last plotted mappable object for the shared colorbar
+        if i == 4:  # Use the central plot's mappable for the colorbar
+            mappable = im
+
+    # Add a single colorbar below all plots
+    if mappable:
+        cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
+        cbar = fig.colorbar(mappable, cax=cbar_ax, orientation='horizontal')
+        cbar.set_label('Colorbar Label')  # Add your label here
+
+    return fig
+
+
+def hemispheric_plot(data, levels, extent, cmap, title,
+              central_longitude=0, central_latitude=90, colorbar_label='Colorbar Label'):
+    """
+    Plot data using a stereographic projection.
+
+    Args:
+    - data (xarray.DataArray): The data to plot.
+    - levels (np.ndarray): Contour levels for the plot.
+    - cmap (str): Colormap for the plot.
+    - title (str): Title of the plot.
+    - extent (list): Geographic extent for the plot [lon_min, lon_max, lat_min, lat_max].
+    - projection (ccrs.Projection): Cartopy projection for the plot.
+    - central_longitude (float): Central longitude for the Stereographic projection.
+    - central_latitude (float): Central latitude for the Stereographic projection.
+    - colorbar_label (str): Label for the colorbar.
+    """
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection=ccrs.Stereographic(central_longitude=central_longitude, central_latitude=central_latitude))
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
+    im = ax.contourf(data.lon, data.lat, data, levels=levels, cmap=cmap, transform=ccrs.PlateCarree())
+    cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
+    cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
+    cbar.set_label(colorbar_label)
+    ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
+    ax.add_feature(cfeature.BORDERS, linestyle=':', linewidth=0.5)
+    ax.gridlines(draw_labels=True)
+    ax.add_feature(cfeature.LAND, edgecolor='black', facecolor='lightgray')
+    ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='lightblue')
+    ax.set_title(title, fontsize=14)
     plt.show()
