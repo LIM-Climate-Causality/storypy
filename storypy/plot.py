@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 import os
-from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
+#from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
 import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 import cartopy.crs as ccrs

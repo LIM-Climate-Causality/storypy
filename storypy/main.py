@@ -1,7 +1,7 @@
 from .plotting import plot_function, plot_precipitation_change_two_regions
 from .processing import seasonal_data_months, apply_region_mask
 from .diagnostics import clim_change, test_mean_significance
-from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
+#from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
 import os
 from .utils import np, xr
 
