@@ -8,7 +8,7 @@
 
 ```source sp_venv/bin/activate```
 
-The virtual environment can deactivated by simply:
+The virtual environment can be deactivated by simply:
 
 ```deactivate```
 _____________________________________________________________________
