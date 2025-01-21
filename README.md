@@ -19,6 +19,7 @@ _____________________________________________________________________
 ```conda activate sp_env```
 
 To deactivate, simply:
+
 ```conda deactivate```
 
 
@@ -28,6 +29,7 @@ Before installing the storypy python package, users need to setup Esmvaltool the
 
 
 Install the storypy package
+
 ```pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple storypy```
 
 
