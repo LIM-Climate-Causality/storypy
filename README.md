@@ -1,12 +1,33 @@
-## Climate Storyline - climstory
+# Climate Storyline - storypy
 
-Before installing the climstory python package, users need to setup Esmvaltool their machine. After the setup of Esmvaltool, activate the esmvaltool environment. Then, pip install the climstory package. This is because Esmvaltool uses some depedencies which are only available in conda.
+## Using the package without Esmvaltool
+#### Virtual environment with pip
+```pip3 install virtualenv```
 
-- Install the package
-```pip install .```
+```python3 -m venv sp_venv```
 
-- Install an updated version
-```pip install --upgrade .```
+```source sp_venv/bin/activate```
 
-- Uninstall the package
-```pip uninstall storypy```
+The virtual environment can deactivated by simply:
+
+```deactivate```
+_____________________________________________________________________
+
+#### Virtual environment with conda
+```conda create -n sp_env python=3.6.3```
+
+```conda activate sp_env```
+
+To deactivate, simply:
+```conda deactivate```
+
+
+
+## If installing to be used with Esmvaltool recipe (... skip this step for now)
+Before installing the storypy python package, users need to setup Esmvaltool their machine. After the setup of Esmvaltool, activate the esmvaltool environment. Then, pip install the storypy package. This is because Esmvaltool uses some dependencies which are only available in conda.
+
+
+Install the storypy package
+```pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple storypy```
+
+

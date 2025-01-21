@@ -202,7 +202,7 @@ def plot_precipitation_change_two_regions(model_changes, region_a_extent, region
     return fig
 
 
-def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, figsize=(15, 5)):
+def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5)):
     """
     Creates a figure with three panels in a row.
     
@@ -236,13 +236,14 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
         ax.set_title(titles[i], fontsize=12)
     
     # Add a single colorbar at the bottom of the plots
-    fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
+    cbar = fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
+    cbar.set_label(colorbar_label)
     
     # Show the figure
     plt.show()
 
 
-def create_five_panel_figure(map_data, extents, levels, colormaps, titles, white_range=(-0.05, 0.05)):
+def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label', white_range=(-0.05, 0.05)):
     """
     Creates a figure with five panels: one in the center and four around it (at the corners).
     A single colorbar is added below all panels.
@@ -259,7 +260,7 @@ def create_five_panel_figure(map_data, extents, levels, colormaps, titles, white
         fig: The created matplotlib figure.
     """
     # Create the figure and GridSpec layout
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(12, 7))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
     
     # Define subplot positions for the maps
@@ -312,7 +313,7 @@ def create_five_panel_figure(map_data, extents, levels, colormaps, titles, white
     if mappable:
         cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
         cbar = fig.colorbar(mappable, cax=cbar_ax, orientation='horizontal')
-        cbar.set_label('Colorbar Label')  # Add your label here
+        cbar.set_label(colorbar_label)  # Add your label here
 
     return fig
 
