@@ -4,7 +4,7 @@ storypy
 A Python package to compute and visualize climate storylines.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Richard Alawode, Julia Mindlin, Marlene Kretschmer"
 __credits__ = "LIM - Climate Causality"
 

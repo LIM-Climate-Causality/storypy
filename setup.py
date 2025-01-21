@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='storypy',
-    version='0.1.3',
+    version='0.1.4',
     description='A Python package for climate storylines',
     author='Richard Alawode',
     author_email='richard.alawode@uni-leipzig.de',
