@@ -14,7 +14,7 @@ def read_data(filename):
     """
     try:
         data_path = pkg_resources.resource_filename('storypy', filename)
-        data = xr.open_dataset(data_path)
+        data = xr.open_dataset(data_path).sel(lat=slice(-88,88))
         return data
     except FileNotFoundError:
         print(f"The file {filename} was not found.")

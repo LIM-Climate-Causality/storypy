@@ -1,5 +1,8 @@
 from .utils import np, xr, plt, ccrs, gridspec, cfeature
 from matplotlib.colors import ListedColormap, BoundaryNorm
+from cartopy.util import add_cyclic_point
+import matplotlib.colors as mcolors
+import matplotlib as mpl
 
 # Plotting function with stippling
 
@@ -201,8 +204,38 @@ def plot_precipitation_change_two_regions(model_changes, region_a_extent, region
     plt.tight_layout()
     return fig
 
+def make_symmetric_colorbar(plot_range, num_steps=18):
+    """Create arrays with color and tick levels that can be used as arguments
+    in the Matplotlib contourf() function and the colorbar() function,
+    respectively and that ensure symmetric color levels and colorbar ticks.
+    
+    Parameters
+    ----------
+    plot_range : numeric (int or float)
+        Value range that should be covered by contour plot.
+    
+    num_steps : int
+        Number of color levels. One level will be added if number is odd. Will
+        be converted to integer if number is float.
+        
+    Returns
+    -------
+    (color_levels, tick_levels) : tuple
+        Tuple containing numpy-array with color levels and numpy array with tick levels.
+    """
+    num_steps = int(num_steps) # convert to int if float is given
+    if num_steps % 2 != 0:
+        num_steps = num_steps + 1 # add one level in case odd number is given
 
-def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5)):
+    inc_color = (plot_range*2)/num_steps # calculate increment
+    color_levels = np.arange(-plot_range-inc_color/2, plot_range+inc_color/2+plot_range/1000, inc_color)
+    
+    inc_ticks = inc_color
+    tick_levels = np.arange(-plot_range, plot_range+plot_range/1000, inc_ticks*2)
+    return color_levels, tick_levels
+
+
+def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5), mask_range=(-0.02, 0.02)):
     """
     Creates a figure with three panels in a row.
     
@@ -227,10 +260,16 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
         # Add coastlines and gridlines
         ax.coastlines()
         ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
+
+        data_cyclic, lon_cyclic = add_cyclic_point(data_list[i].values, coord=data_list[i].lon)
+
+        # Mask values close to zero
+        masked_data = np.ma.masked_inside(data_cyclic, mask_range[0], mask_range[1])
         
         # Plot the data (assuming `data_list` contains 2D arrays or DataArrays)
-        im = ax.contourf(data_list[i].lon, data_list[i].lat, data_list[i].values,
-                         levels=levels_list[i], cmap=cmaps_list[i], transform=ccrs.PlateCarree())
+        norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=levels_list[i][0], vmax=levels_list[i][-1])
+        im = ax.contourf(lon_cyclic, data_list[i].lat, masked_data,
+                         levels=levels_list[i], cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
         
         # Set the title for each subplot
         ax.set_title(titles[i], fontsize=12)
@@ -243,79 +282,205 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     plt.show()
 
 
-def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label', white_range=(-0.05, 0.05)):
-    """
-    Creates a figure with five panels: one in the center and four around it (at the corners).
-    A single colorbar is added below all panels.
+# def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label', white_range=(-0.05, 0.05), mask_range=(-0.05, 0.05)):
+#     """
+#     Creates a figure with five panels: one in the center and four around it (at the corners).
+#     A single colorbar is added below all panels.
 
+#     Parameters:
+#         map_data (list): A list of 5 data arrays to be plotted as maps.
+#         extents (list): A list of tuples for map extents [(lon_min, lon_max, lat_min, lat_max), ...].
+#         levels (list): A list of level arrays for contourf or pcolormesh.
+#         colormaps (list): A list of colormaps to use for each map.
+#         titles (list): A list of titles for the subplots.
+#         white_range (tuple): The range of values to make white (min, max).
+
+#     Returns:
+#         fig: The created matplotlib figure.
+#     """
+#     # Create the figure and GridSpec layout
+#     fig = plt.figure(figsize=(12, 7))
+#     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
+    
+#     # Define subplot positions for the maps
+#     subplot_positions = [(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]  # Corners and center
+    
+#     # Keep track of the mappable objects for the colorbar
+#     mappable = None
+    
+#     for i, pos in enumerate(subplot_positions):
+#         # Add a GeoAxes at the specified position
+#         ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
+#         lon_min, lon_max, lat_min, lat_max = extents[i]
+        
+#         # Set map extent
+#         ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
+        
+#         # Add map features
+#         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
+#         ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='--')
+#         ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
+        
+#         # Extract the data
+#         data = map_data[i]
+        
+#         ############################################################################################
+#         # Custom colormap for white space
+#         # cmapU850 = mpl.colors.ListedColormap(['#8b4513', '#e65c00', '#ff8c00', '#ffa500',
+#         #                        '#f5deb3', 'white', 'white', '#fff5ee',
+#         #                        '#eed2ee', '#d8bfd8', '#9a32cd', '#6a0dad'])
+        
+#         # cmapU850.set_over('maroon')
+#         # cmapU850.set_under('midnightblue')
+#         ############################################################################################
+
+#         # colors = ["saddlebrown", "white", "rebeccapurple"]
+#         # cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", colors)
+
+#         # cmap.set_over('darkslateblue')  # Darker shade of purple for high out-of-bound values
+#         # cmap.set_under('darkgoldenrod')  # Darker shade of brown for low out-of-bound values
+
+#         # clevs = np.linspace(-0.3, 0.3, 13)  # Levels centered around zero
+#         # norm = mcolors.CenteredNorm(vcenter=0, halfrange=0.3)
+#         data_min = data.min().values
+#         data_max = data.max().values
+#         plot_range = max(abs(data_min), abs(data_max))
+#         num_steps = 12
+
+#         # Create a custom colormap
+#         base_cmap = plt.get_cmap(colormaps[i])
+#         colors = base_cmap(np.linspace(0, 1, 256))
+        
+#         # Mask values within the white range
+#         white_min, white_max = white_range
+#         white_mask = (levels[i] >= white_min) & (levels[i] <= white_max)
+#         for j in range(len(levels[i]) - 1):
+#             if white_mask[j]:
+#                 colors[j, :] = [1, 1, 1, 1]  # Set white color for the range
+        
+#         custom_cmap = ListedColormap(colors)
+
+#         data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+
+#         ############################################################################################
+#         ######## Using a mask ##########
+#         # original_cmap = plt.get_cmap(colormaps[i])
+#         # colors = original_cmap(np.linspace(0, 1, 256))
+#         # min_col = np.min(data_cyclic)
+#         # max_col = np.max(data_cyclic)
+#         # mask_min_idx = int((mask_range[0] - min_col) / (max_col - min_col) * 256)
+#         # mask_max_idx = int((mask_range[1] - min_col) / (max_col - min_col) * 256)
+#         # colors[mask_min_idx:mask_max_idx, :] = [1, 1, 1, 1]  # RGBA for white
+#         # modified_cmap = ListedColormap(colors)
+#         ############################################################################################
+#         # Plot the data
+#         norm = BoundaryNorm(levels[i], ncolors=modified_cmap.N, clip=True)
+#         # data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+
+#         #masked_data = np.ma.masked_inside(data_cyclic, mask_range[0], mask_range[1])
+
+#         #norm = mcolors.CenteredNorm(vcenter=0, halfrange=0.05)
+#         im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=levels[i], cmap=modified_cmap, norm=norm, extend='both', transform=ccrs.PlateCarree())
+        
+#         # Set the title for each subplot
+#         ax.set_title(titles[i], fontsize=10, pad=4)
+        
+#         # Keep the last plotted mappable object for the shared colorbar
+#         if i == 4:  # Use the central plot's mappable for the colorbar
+#             mappable = im
+
+#     # Add a single colorbar below all plots
+#     if mappable:
+#         cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
+#         cbar = fig.colorbar(mappable, cax=cbar_ax, orientation='horizontal')
+#         cbar.set_label(colorbar_label)  # Add your label here
+
+#     return fig
+
+'''
+def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5)):
+    """
+    Creates a figure with three panels in a row.
+    
     Parameters:
-        map_data (list): A list of 5 data arrays to be plotted as maps.
-        extents (list): A list of tuples for map extents [(lon_min, lon_max, lat_min, lat_max), ...].
-        levels (list): A list of level arrays for contourf or pcolormesh.
-        colormaps (list): A list of colormaps to use for each map.
-        titles (list): A list of titles for the subplots.
-        white_range (tuple): The range of values to make white (min, max).
-
-    Returns:
-        fig: The created matplotlib figure.
+    - data_list: List of 2D arrays or datasets to plot.
+    - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
+    - levels_list: List of levels for contour plots.
+    - cmaps_list: List of colormap names for each map.
+    - titles: Titles for each subplot.
+    - figsize: Size of the overall figure (default is (15, 5)).
     """
-    # Create the figure and GridSpec layout
+    
+    fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
+                            subplot_kw={'projection': ccrs.PlateCarree()})
+
+    for i, ax in enumerate(axs):
+        ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
+        ax.coastlines()
+        ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
+
+        data = data_list[i]
+        plot_range = max(abs(data.min()), abs(data.max()))
+        color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
+        
+        norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=-plot_range, vmax=plot_range)
+        data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+        
+        im = ax.contourf(lon_cyclic, data.lat, data_cyclic,
+                         levels=color_levels, cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
+        
+        ax.set_title(titles[i], fontsize=12)
+
+    cbar = fig.colorbar(im, ax=axs.ravel().tolist(), orientation='horizontal', fraction=0.05, pad=0.05, ticks=tick_levels)
+    cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))
+    cbar.set_label(colorbar_label)
+    
+    plt.show()
+'''
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.gridspec as gridspec
+from cartopy import crs as ccrs, feature as cfeature
+from cartopy.util import add_cyclic_point
+import numpy as np
+from matplotlib.ticker import FuncFormatter
+
+def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label'):
     fig = plt.figure(figsize=(12, 7))
-    gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
-    
-    # Define subplot positions for the maps
-    subplot_positions = [(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]  # Corners and center
-    
-    # Keep track of the mappable objects for the colorbar
-    mappable = None
-    
-    for i, pos in enumerate(subplot_positions):
-        # Add a GeoAxes at the specified position
+    gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)
+
+    for i, pos in enumerate([(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]):
         ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
-        lon_min, lon_max, lat_min, lat_max = extents[i]
-        
-        # Set map extent
-        ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
-        
-        # Add map features
+        ax.set_extent(extents[i], crs=ccrs.PlateCarree())
         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
-        ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='--')
+        ax.add_feature(cfeature.BORDERS, linestyle='--', linewidth=0.5)
         ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
         
-        # Extract the data
         data = map_data[i]
+        plot_range = max(abs(data.min()), abs(data.max()))
+        color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
         
-        # Create a custom colormap
-        base_cmap = plt.get_cmap(colormaps[i])
-        colors = base_cmap(np.linspace(0, 1, 256))
+        original_cmap = plt.get_cmap(colormaps[i])
+        shifted_cmap = original_cmap(np.linspace(0, 1, len(color_levels)))
+        mid_index = len(color_levels) // 2
+        shifted_cmap[mid_index - 1:mid_index + 1] = [1, 1, 1, 1]
+        new_cmap = mcolors.ListedColormap(shifted_cmap)
         
-        # Mask values within the white range
-        white_min, white_max = white_range
-        white_mask = (levels[i] >= white_min) & (levels[i] <= white_max)
-        for j in range(len(levels[i]) - 1):
-            if white_mask[j]:
-                colors[j, :] = [1, 1, 1, 1]  # Set white color for the range
+        norm = mcolors.TwoSlopeNorm(vmin=-plot_range, vcenter=0, vmax=plot_range)
+        data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+        im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=color_levels, cmap=new_cmap, norm=norm, transform=ccrs.PlateCarree())
         
-        custom_cmap = ListedColormap(colors)
-        
-        # Plot the data
-        norm = BoundaryNorm(levels[i], ncolors=custom_cmap.N, clip=True)
-        im = ax.contourf(data.lon, data.lat, data, levels=levels[i], cmap=custom_cmap, norm=norm, transform=ccrs.PlateCarree())
-        
-        # Set the title for each subplot
         ax.set_title(titles[i], fontsize=10, pad=4)
         
-        # Keep the last plotted mappable object for the shared colorbar
-        if i == 4:  # Use the central plot's mappable for the colorbar
-            mappable = im
+    if im:
+        cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])
+        cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=tick_levels)
+        cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))  # Formatting to 1 decimal place
+        cbar.set_label(colorbar_label)
 
-    # Add a single colorbar below all plots
-    if mappable:
-        cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
-        cbar = fig.colorbar(mappable, cax=cbar_ax, orientation='horizontal')
-        cbar.set_label(colorbar_label)  # Add your label here
+    plt.show()
 
-    return fig
 
 
 def hemispheric_plot(data, levels, extent, cmap, title,
@@ -337,7 +502,8 @@ def hemispheric_plot(data, levels, extent, cmap, title,
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection=ccrs.Stereographic(central_longitude=central_longitude, central_latitude=central_latitude))
     ax.set_extent(extent, crs=ccrs.PlateCarree())
-    im = ax.contourf(data.lon, data.lat, data, levels=levels, cmap=cmap, transform=ccrs.PlateCarree())
+    data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+    im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=levels, cmap=cmap, transform=ccrs.PlateCarree())
     cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
     cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
     cbar.set_label(colorbar_label)

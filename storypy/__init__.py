@@ -14,7 +14,8 @@ from .plotting import (
     plot_precipitation_change_two_regions,
     plot_function, create_three_panel_figure,
     create_five_panel_figure,
-    hemispheric_plot
+    hemispheric_plot,
+    make_symmetric_colorbar
     )
 from .processing import seasonal_data_months, apply_region_mask
 from .diagnostics import clim_change, test_mean_significance
@@ -42,6 +43,7 @@ __all__ = [
     "create_three_panel_figure",
     "create_five_panel_figure",
     "hemispheric_plot",
+    "make_symmetric_colorbar",
 #    "np",
 #    "xr",
 #    "plt",
