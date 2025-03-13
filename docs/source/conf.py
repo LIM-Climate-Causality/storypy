@@ -20,9 +20,9 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
-project = "ibicus"
-copyright = "2022, ECMWF"
-author = "ECMWF"
+project = "storypy"
+copyright = "2025, Leipzig Institute for Meteorology"
+author = "LIM"
 
 
 # -- General configuration ---------------------------------------------------
