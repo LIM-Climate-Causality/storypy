@@ -3,18 +3,22 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ibicus's documentation!
+Welcome to storypy's documentation!
 ========================================
 
-**ibicus provides a flexible and user-friendly toolkit bias adjustment of climate models and associated evaluation.**
+**storypy is a python based packages that provides a tailored interface for computing climate storylines.**
 
-ibicus implements eight peer-reviewed bias adjustment methods in a common framework, including ISIMIP (Lange 2019) and CDFt (Michelangeli et al. 2009) and provides a unified interface for their application. The package enables the user to modify and refine the bias adjustment methods through settings and parameters. The evaluation framework introduced in ibicus allows the user to analyse changes to the marginal, spatiotemporal and inter-variable structure of user-defined climate indices and distributional properties, as well as any alteration of the climate change trend simulated in the model. ibicus operates on a numerical level and can therefore be integrated with any existing pre-processing pipeline and easily parallelized and integrated into high performance computing environments.
+storypy privides:
+
+- a set of functions to analyze multi‐model ensembles by focusing on the identification of dynamical storylines.
+
+- customizable options for selecting remote drivers, target seasons, and climate variables or climatic‐impact drivers, the storypy provides flexibility and adaptability for various research and policy applications
 
 The ibicus documentation presented here provides a detailed overview of the different methods implemented, their default settings and possible modifications in parameters under `Documentation - ibicus.debias <reference/debias.html>`_, as well as a detailed description of the evaluation framework under `Documentation - ibicus.evaluate <reference/debias.html>`_ For a hands-on introduction to the package see our tutorial notebooks.
 
 The documentation also provides a brief introduction to bias adjustment and possible issues with the approach under `Getting started <getting_started>`_. For a more detailed introduction to bias adjustment, as well as an overview of relevant literature on existing methods and issues, we refer to our paper published in Geoscientific Model Development:
 
-How to cite: Spuler, F. R., Wessel, J. B., Comyn-Platt, E., Varndell, J., and Cagnazzo, C.: ibicus: a new open-source Python package and comprehensive interface for statistical bias adjustment and evaluation in climate modelling (v1.0.1), Geosci. Model Dev., 17, 1249–1269, https://doi.org/10.5194/gmd-17-1249-2024, 2024.
+How to cite: Alawode, R., Mindlin, J., Kretschmer, M........, 2024.
 
 Documentation
 _____________
@@ -36,10 +40,10 @@ _____________
 
 **Tutorials**
 
-- `00 Download and Preprocess Data <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/00%20Download%20and%20Preprocess.ipynb>`_
-- `01 Getting Started <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/01%20Getting%20Started.ipynb>`_
-- `02 Adjusting Debiasers <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/02%20Adjusting%20Debiasers.ipynb>`_
-- `03 Evaluation <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/03%20Evaluation.ipynb>`_
+- `Zappa_and_Shepherd_2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/zappa_shepherd.ipynb>`_
+- `Mindlin_2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/mindlin_2020>`_
+- `Monerie_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/monerie_2023.ipynb>`_
+- `Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/ghosh_2023.ipynb>`_
 - `04 Parallelization and Advanced Topics <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/04%20Parallelization%20and%20Advanced%20Topics.ipynb>`_
 
 
