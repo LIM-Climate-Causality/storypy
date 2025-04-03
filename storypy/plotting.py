@@ -1,12 +1,17 @@
-from .utils import np, xr, plt, ccrs, gridspec, cfeature
+from .utils import np, xr, plt, ccrs, gridspec, cfeature, pd
+from .processing import create_arc
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from cartopy.util import add_cyclic_point
 import matplotlib.colors as mcolors
 import matplotlib as mpl
+from matplotlib.patches import Ellipse
+from sklearn.linear_model import LinearRegression
+import matplotlib.transforms as transforms
+from numpy import linalg as la
 
 # Plotting function with stippling
 
-def plot_function(target_change, p_values, positives_model, negatives_model, sig_level=0.05, sig=1):
+def plot_function(target_change, p_values, positives_model, negatives_model, region_extents, sig_level=0.05, sig=1):
     import cartopy.feature as cfeature
 
     # Determine the extent of the map based on `target_change`
@@ -14,7 +19,8 @@ def plot_function(target_change, p_values, positives_model, negatives_model, sig
         extent = target_change.attrs['region_extent']
     else:
         # Default to global extent
-        extent = [-180, 180, -90, 90]
+        #extent = [-180, 180, -90, 90]
+        extent = [0, 360, -90, 90]
 
     # Subset `target_change` to its actual extent
     target_change = target_change.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
@@ -64,10 +70,10 @@ def plot_function(target_change, p_values, positives_model, negatives_model, sig
         print(f"Latitude: {negatives_model_da['lat'].min().values} to {negatives_model_da['lat'].max().values}")
 
     # Initialize the plot
-    fig, ax = plt.subplots(figsize=(8, 6), subplot_kw={'projection': ccrs.PlateCarree()})
+    fig, ax = plt.subplots(figsize=(10, 12), subplot_kw={'projection': ccrs.PlateCarree()})
     ax.set_extent(extent, crs=ccrs.PlateCarree())
-    ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='black', linewidth=0.5)
-    ax.add_feature(cfeature.BORDERS.with_scale('50m'), linestyle=':', edgecolor='gray')
+    ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='black', linewidth=0.7)
+    ax.add_feature(cfeature.BORDERS.with_scale('50m'), linestyle='--', edgecolor='gray')
 
     # Plot `target_change` as the main contour
     target_change.plot.contourf(
@@ -78,6 +84,11 @@ def plot_function(target_change, p_values, positives_model, negatives_model, sig
         add_colorbar=True,
         cbar_kwargs={'shrink': 0.7, 'label': 'Precipitation Change (mm/day)'}
     )
+
+    # Drawing arcs for the specified regions
+    for extent in region_extents:
+        arc = create_arc(extent[2], extent[3], extent[0], extent[1])  # assuming extents are (lat_min, lat_max, lon_min, lon_max)
+        ax.add_geometries([arc], crs=ccrs.PlateCarree(), edgecolor='blue', facecolor='none', linewidth=2)
 
     # Add stippling for `p_values` (significance)
     if p_values is not None and p_values.size > 0:
@@ -106,100 +117,72 @@ def plot_function(target_change, p_values, positives_model, negatives_model, sig
 
     return fig
 
-def plot_precipitation_change_two_regions(model_changes, region_a_extent, region_b_extent, years):
+def plot_precipitation_change(target_change, region_extents, years, var_name):
     """
-    Create a two-panel plot showing precipitation changes over time for two regions.
+    Plots precipitation changes for multiple regions.
 
     Parameters:
-        model_changes: list of xr.DataArray
-            List of time series data for each model. Each DataArray should have time as a dimension.
-        region_a_extent: tuple
-            Tuple defining the lat/lon bounds for Region A (lat_min, lat_max, lon_min, lon_max).
-        region_b_extent: tuple
-            Tuple defining the lat/lon bounds for Region B (lat_min, lat_max, lon_min, lon_max).
-        years: np.ndarray
-            Array of years corresponding to the time series data.
+    - target_change : list of xarray.DataArrays
+        List of precipitation change data for each model.
+    - region_extents : list of tuples
+        Each tuple contains the lat_min, lat_max, lon_min, and lon_max for a region.
+    - years : np.ndarray
+        Array of years corresponding to the time series data.
     """
-    import matplotlib.pyplot as plt
-    from scipy.stats import linregress
 
-    # Helper function to calculate mean, ensemble spread, and confidence intervals
-    def calculate_region_stats(model_changes, region_extent):
-        region_changes = []
-        for model in model_changes:
+    # Helper function to extract and average data for a specific region
+    def extract_region_data(target_change, region_extent):
+        region_data = []
+        for model in target_change:
             model_region = model.sel(
                 lon=slice(region_extent[2], region_extent[3]),
                 lat=slice(region_extent[0], region_extent[1])
             )
-            model_mean = model_region.mean(dim=['lon', 'lat'])  # Reduce spatial dimensions
-            region_changes.append(model_mean)
+            # Calculate the baseline mean for 1960-1990
+            baseline = model_region.sel(time=slice(1960, 1990)).mean(dim='time')
+            # Calculate the anomaly by subtracting the baseline from the entire series
+            anomaly = model_region - baseline
+            # Average over the spatial dimensions
+            region_data.append(anomaly.mean(dim=['lat', 'lon']))
+        return region_data
 
-        # Concatenate over the ensemble dimension
-        stacked_data = xr.concat(region_changes, dim='ensemble')
+    # Create the figure with subplots
+    num_regions = len(region_extents)
+    fig, axes = plt.subplots(1, num_regions, figsize=(6 * num_regions, 4), sharey=True)
 
-        # Ensure time dimension aligns with `years`
-        #if 'time' in stacked_data.dims:
-        #    stacked_data = stacked_data.sel(time=years)  # Align to `years`
+    if num_regions == 1:  # To handle the case of a single subplot
+        axes = [axes]
 
-        # Compute ensemble mean, upper, and lower confidence intervals
-        ensemble_mean = stacked_data.mean(dim='ensemble')
-        upper_ci = ensemble_mean + stacked_data.std(dim='ensemble')
-        lower_ci = ensemble_mean - stacked_data.std(dim='ensemble')
+    for i, region_extent in enumerate(region_extents):
+        data_region = extract_region_data(target_change, region_extent)
 
-        return {
-            'ensemble': stacked_data.values,
-            'mean': ensemble_mean.values,
-            'upper': upper_ci.values,
-            'lower': lower_ci.values,
-        }
+        ax = axes[i]
+        for model_data in data_region:
+            rolling_mean = model_data.rolling(time=30, center=True, min_periods=1).mean()
 
-    # Calculate stats for Region A and Region B
-    data_a = calculate_region_stats(model_changes, region_a_extent)
-    data_b = calculate_region_stats(model_changes, region_b_extent)
+            if isinstance(rolling_mean, xr.Dataset):
+                rolling_mean = rolling_mean.to_dataarray()
 
-    # Ensure `years` aligns with the shape of the computed means
-    if len(years) != len(data_a['mean']) or len(years) != len(data_b['mean']):
-        raise ValueError(
-            f"Mismatch between years ({len(years)}) and computed data (Region A: {len(data_a['mean'])}, "
-            f"Region B: {len(data_b['mean'])})."
-        )
+            if rolling_mean.time.size != len(years):
+                rolling_mean = rolling_mean.interp(time=years)
+            ax.plot(years, rolling_mean.squeeze().values, alpha=0.3, linewidth=0.8)  # Plot the rolling mean for each model
 
-    # Calculate regression and R/p-values
-    r_value_a, p_value_a = linregress(years, data_a['mean'])[2:4]
-    r_value_b, p_value_b = linregress(years, data_b['mean'])[2:4]
+        # Calculate and plot the model mean (thick black line)
+        model_mean = xr.concat(data_region, dim='model', coords='minimal', compat='override').mean(dim='model')
+        rolling_mean = model_mean.rolling(time=30, center=True, min_periods=1).mean()
 
-    # Create the plot
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
-    colors = {'mean': 'blue', 'ci': 'red', 'ensemble': 'gray'}
+        if isinstance(rolling_mean, xr.Dataset):
+                rolling_mean = rolling_mean.to_dataarray()
 
-    # Panel A (Region A)
-    ax = axes[0]
-    ax.plot(years, data_a['ensemble'].T, color=colors['ensemble'], alpha=0.3, linewidth=0.8)
-    ax.plot(years, data_a['mean'], color=colors['mean'], label='Mean')
-    ax.fill_between(years, data_a['lower'], data_a['upper'], color=colors['ci'], alpha=0.2, label='Confidence Interval')
-    ax.text(years[0] + 5, max(data_a['upper']) - 0.2, f"R = {r_value_a:.2f} (p = {p_value_a:.3f})", fontsize=10,
-            bbox=dict(facecolor='white', alpha=0.7))
-    ax.set_title("Region A", fontsize=12)
-    ax.set_ylabel("pr change [mm day$^{-1}$]")
-    ax.set_xlabel("Years")
-    ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
-    ax.legend()
+        if rolling_mean.time.size != len(years):
+            rolling_mean = rolling_mean.interp(time=years)
+        ax.plot(years, rolling_mean.squeeze().values, color='black', linewidth=2, label='Model Mean')
 
-    # Panel B (Region B)
-    ax = axes[1]
-    ax.plot(years, data_b['ensemble'].T, color=colors['ensemble'], alpha=0.3, linewidth=0.8)
-    ax.plot(years, data_b['mean'], color=colors['mean'], label='Mean')
-    ax.fill_between(years, data_b['lower'], data_b['upper'], color=colors['ci'], alpha=0.2, label='Confidence Interval')
-    ax.text(years[0] + 5, max(data_b['upper']) - 0.2, f"R = {r_value_b:.2f} (p = {p_value_b:.3f})", fontsize=10,
-            bbox=dict(facecolor='white', alpha=0.7))
-    ax.set_title("Region B", fontsize=12)
-    ax.set_xlabel("Years")
-    ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
-    ax.legend()
-
-    # Add subplot labels
-    axes[0].text(-0.1, 1.05, "a", transform=axes[0].transAxes, fontsize=14, fontweight='bold')
-    axes[1].text(-0.1, 1.05, "b", transform=axes[1].transAxes, fontsize=14, fontweight='bold')
+        ax.set_title(f"Region {i+1}", fontsize=12)
+        ax.set_ylabel(f"{var_name} change" if i == 0 else "")
+        ax.set_xlabel("Years")
+        ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
+        ax.legend()
 
     plt.tight_layout()
     return fig
@@ -514,3 +497,140 @@ def hemispheric_plot(data, levels, extent, cmap, title,
     ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='lightblue')
     ax.set_title(title, fontsize=14)
     plt.show()
+
+
+def confidence_ellipse(x ,y, ax, corr,chi_squared=3.21, facecolor='none',**kwargs):
+ if x.size != y.size:
+  raise ValueError('x and y must be the same size')
+
+ cov = np.cov(x,y)
+ pearson = cov[0, 1]/np.sqrt(cov[0, 0] * cov[1, 1])
+ eigval, eigvec = la.eig(cov)
+ largest_eigval = np.argmax(eigval)
+ largest_eigvec = eigvec[:,largest_eigval]
+ smallest_eigval = np.argmin(eigval)
+ smallest_eigvec = eigvec[:,smallest_eigval]
+ lamda1 = np.max(eigval)
+ lamda2 = np.min(eigval)
+
+ scale_x = np.sqrt(lamda1)
+ scale_y = np.sqrt(lamda2)
+ if corr == 'no':
+    angle = 90.0 #np.arctan(smallest_eigvec[0]/smallest_eigvec[1])*180/np.pi
+ else:
+    angle = np.arctan(smallest_eigvec[0]/smallest_eigvec[1])*180/np.pi
+
+ # Using a special case to obtain the eigenvalues of this
+ # two-dimensionl dataset. Calculating standard deviations
+
+ ell_radius_x = scale_x*np.sqrt(chi_squared)
+ ell_radius_y = scale_y*np.sqrt(chi_squared)
+ ellipse = Ellipse((0, 0), width=ell_radius_x * 2,height=ell_radius_y * 2, angle = -angle, facecolor=facecolor,**kwargs)
+
+ # Calculating x mean
+ mean_x = np.mean(x)
+ # calculating y mean
+ mean_y = np.mean(y)
+
+ transf = transforms.Affine2D() \
+     .translate(mean_x, mean_y)
+
+ ellipse.set_transform(transf + ax.transData)
+ return ax.add_patch(ellipse), print(angle), ellipse
+
+
+def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1}$]',y_label='Central Pacific Warming [K K$^{-1}$]'):
+    #Compute regression y on x
+    x1 = x.reshape(-1, 1)
+    y1 = y.reshape(-1, 1)
+    linear_regressor = LinearRegression()  # create object for the class
+    reg = linear_regressor.fit(x1, y1)  # perform linear regression
+    X_pred = np.linspace(np.min(x)-1, np.max(x)+0.5, 31)
+    X_pred = X_pred.reshape(-1, 1)
+    Y_pred = linear_regressor.predict(X_pred)  # make predictions
+    c = reg.coef_
+
+    #Compute regression x on y
+    reg2 = linear_regressor.fit(y1, x1)  # perform linear regression
+    Y_pred2 = np.linspace(np.min(y), np.max(y), 31)
+    Y_pred2 = Y_pred2.reshape(-1, 1)
+    X_pred2 = linear_regressor.predict(Y_pred2)  # make predictions
+    c2 = reg2.coef_
+
+    #Define limits
+    min_x = np.min(x) - 0.2*np.abs(np.max(x) - np.min(x))
+    max_x = np.max(x) + 0.2*np.abs(np.max(x) - np.min(x))
+    max_y = np.max(y) + 0.2*np.abs(np.max(y) - np.min(y))
+    max_y = np.min(y) - 0.2*np.abs(np.max(y) - np.min(y))
+    mean_x = np.mean(x)
+    mean_y = np.mean(y)
+
+    #Calcular las rectas x = y, x = -y
+    Sx = np.std(x)
+    Sy = np.std(y)
+    S_ratio = Sy/Sx
+    YeqX = S_ratio*X_pred - S_ratio*mean_x + mean_y
+    YeqMinsX = S_ratio*mean_x + mean_y - S_ratio*X_pred
+
+
+    #Plot-----------------------------------------------------------------------
+    markers = ['<','<','v','*','D','x','x','p','+','+','d','8','X','X','^','d','d','1','2','>','>','D','D','s','.','P', 'P', '3','4','h','H', '>','X','s','o','o',]
+    print(models)
+    fig, ax = plt.subplots()
+    for px, py, t, l in zip(x, y, markers, models):
+       ax.scatter(px, py, marker=t,label=l)
+
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.1,box.width, box.height * 0.9])
+    confidence_ellipse(x, y, ax,corr,edgecolor='red',label='80 $\%$ confidence region')
+    confidence_ellipse(x, y, ax,corr,chi_squared=4.6,edgecolor='k',linestyle='--',alpha=0.5,label='$\pm$ 10 $\%$ confidence regions')
+    confidence_ellipse(x, y, ax,corr,chi_squared=2.4,edgecolor='k',linestyle='--',alpha=0.5)
+    ax.axvline(mean_x, c='grey', lw=1)
+    ax.axhline(mean_y, c='grey', lw=1)
+    ax.grid()
+    ax.tick_params(labelsize=18)
+    if corr == 'yes':
+        r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
+        ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)
+        ts2 = np.sqrt(((1-r**2)/(2*(1+r)))*chi)
+        story_x1 = [mean_x + ts1*np.std(x)]
+        story_x2 = [mean_x - ts1*np.std(x)]
+        story_y_red1 = [mean_y + ts1*np.std(y)]
+        story_y_red2 =[mean_y - ts1*np.std(y)]
+        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='storylines')
+        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10)
+    elif corr == 'ma':
+        r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
+        ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)
+        ts2 = np.sqrt(((1-r**2)/(2*(1+r)))*chi)
+        story_x1 = [mean_x + ts1*np.std(x)]
+        story_x2 = [mean_x - ts1*np.std(x)]
+        story_y_red1 = [mean_y + ts1*np.std(y)]
+        story_y_red2 =[mean_y - ts1*np.std(y)]
+        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='storylines')
+        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10) 
+    elif corr == 'pacific':
+        r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
+        ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)
+        ts2 = np.sqrt(((1-r**2)/(2*(1+r)))*chi)
+        story_x1 = [mean_x + ts1*np.std(x)]
+        story_x2 = [mean_x - ts1*np.std(x)]
+        story_y_red1 = [mean_y + ts1*np.std(y)]
+        story_y_red2 =[mean_y - ts1*np.std(y)]
+        ax.plot(story_x2, story_y_red2, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
+        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')  
+    elif corr == 'nada':
+        r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
+    else:
+        story_x = [mean_x + 1.26*np.std(x),mean_x - 1.26*np.std(x)]
+        story_y_red = [mean_y + 1.26*np.std(y),mean_y - 1.26*np.std(y)]
+        story_y_blue =[mean_y - 1.26*np.std(y),mean_y + 1.26*np.std(y)]
+        ax.plot(story_x, story_y_red, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
+        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')    
+    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), shadow=True, ncol=5)
+    plt.subplots_adjust(bottom=0.05)
+    plt.xlabel(x_label,fontsize=18)
+    plt.ylabel(y_label,fontsize=18)
+    plt.title('R='+str(round(np.corrcoef(x,y)[0,1],3)))
+    #plt.clf
+    return fig

@@ -14,10 +14,6 @@ storypy privides:
 
 - customizable options for selecting remote drivers, target seasons, and climate variables or climatic‐impact drivers, the storypy provides flexibility and adaptability for various research and policy applications
 
-The ibicus documentation presented here provides a detailed overview of the different methods implemented, their default settings and possible modifications in parameters under `Documentation - ibicus.debias <reference/debias.html>`_, as well as a detailed description of the evaluation framework under `Documentation - ibicus.evaluate <reference/debias.html>`_ For a hands-on introduction to the package see our tutorial notebooks.
-
-The documentation also provides a brief introduction to bias adjustment and possible issues with the approach under `Getting started <getting_started>`_. For a more detailed introduction to bias adjustment, as well as an overview of relevant literature on existing methods and issues, we refer to our paper published in Geoscientific Model Development:
-
 How to cite: Alawode, R., Mindlin, J., Kretschmer, M........, 2024.
 
 Documentation
@@ -27,7 +23,7 @@ _____________
 
 * :doc:`getting_started/overview`
 * :doc:`getting_started/installing`
-* :doc:`getting_started/whatisdebiasing`
+* :doc:`getting_started/whatarestorylines`
 
 .. toctree::
    :maxdepth: 1
@@ -36,7 +32,7 @@ _____________
 
    getting_started/overview
    getting_started/installing
-   getting_started/whatisdebiasing
+   getting_started/whatarestorylines
 
 **Tutorials**
 
@@ -44,7 +40,6 @@ _____________
 - `Mindlin_2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/mindlin_2020>`_
 - `Monerie_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/monerie_2023.ipynb>`_
 - `Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/ghosh_2023.ipynb>`_
-- `04 Parallelization and Advanced Topics <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/04%20Parallelization%20and%20Advanced%20Topics.ipynb>`_
 
 
 .. toctree::
@@ -52,11 +47,10 @@ _____________
    :hidden:
    :caption: Tutorials
 
-   00 Download and Preprocess Data <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/00%20Download%20and%20Preprocess.ipynb>
-   01 Getting Started <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/01%20Getting%20Started.ipynb>
-   02 Adjusting Debiasers <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/02%20Adjusting%20Debiasers.ipynb>
-   03 Evaluation <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/03%20Evaluation.ipynb>
-   04 Parallelization and Advanced Topics <https://nbviewer.org/github/ecmwf-projects/ibicus/blob/main/notebooks/04%20Parallelization%20and%20Advanced%20Topics.ipynb>
+   Zappa_and_Shepherd_2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/zappa_shepherd.ipynb>
+   Mindlin_2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/mindlin_2020>
+   Monerie_2023 Debiasers <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/monerie_2023.ipynb>
+   Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/ghosh_2023.ipynb>
 
 **Documentation / API reference**
 
@@ -79,9 +73,9 @@ _____________
 License
 -------
 
-ibicus is available under the open source `Apache-2.0 License`__.
+storypy is available under the open source `MIT License`__.
 
-__ https://github.com/ecmwf-projects/ibicus/blob/main/LICENSE
+__ https://github.com/LIM-Climate-Causality/storypy/blob/main/LICENSE
 
 
 Acknowledgements

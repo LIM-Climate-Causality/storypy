@@ -11,15 +11,22 @@ __credits__ = "LIM - Climate Causality"
 # Import core functionality from the package modules
 from .main import main
 from .plotting import (
-    plot_precipitation_change_two_regions,
+    plot_precipitation_change,
     plot_function, create_three_panel_figure,
     create_five_panel_figure,
     hemispheric_plot,
-    make_symmetric_colorbar
+    make_symmetric_colorbar,
+    plot_ellipse,
+    confidence_ellipse
     )
-from .processing import seasonal_data_months, apply_region_mask
+from .processing import (
+    seasonal_data_months,
+    apply_region_mask,
+    create_arc,
+    adjust_longitudes
+    )
 from .diagnostics import clim_change, test_mean_significance
-from .plot_ellipse import plot_ellipse, confidence_ellipse
+#from .plot_ellipse import plot_ellipse, confidence_ellipse
 
 
 #optional, we can import the commonly used libraries here
@@ -32,7 +39,7 @@ from .plot_ellipse import plot_ellipse, confidence_ellipse
 # Explicitly define the public API of the package
 __all__ = [
     "main",
-    "plot_precipitation_change_two_regions",
+    "plot_precipitation_change",
     "plot_function",
     "seasonal_data_months",
     "apply_region_mask",
@@ -44,6 +51,8 @@ __all__ = [
     "create_five_panel_figure",
     "hemispheric_plot",
     "make_symmetric_colorbar",
+    "create_arc",
+    "adjust_longitudes",
 #    "np",
 #    "xr",
 #    "plt",

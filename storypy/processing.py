@@ -1,4 +1,5 @@
 from .utils import np, xr
+from shapely.geometry.polygon import Polygon
 
 def seasonal_data_months(data, months):
     """
@@ -18,7 +19,7 @@ def seasonal_data_months(data, months):
     if np.issubdtype(data['time'].dtype, np.datetime64):
         time_coord = data['time']
     else:
-        time_coord = xr.cftime_range(start=data.indexes['time'].to_datetimeindex()[0], periods=data['time'].size, freq='M')
+        time_coord = xr.cftime_range(start=data.indexes['time'].to_datetimeindex()[0], periods=data['time'].size, freq='ME')
         data = data.assign_coords(time=time_coord)
 
     # Select the relevant months and keep track of the original years
@@ -68,3 +69,36 @@ def apply_region_mask(data, region_id, lat_dim='lat', lon_dim='lon'):
     
     print(f"Region mask applied. Data min: {masked_data.min().values}, max: {masked_data.max().values}")
     return masked_data
+
+def create_arc(lon_min, lon_max, lat_min, lat_max, n_points=100):
+    lons = np.linspace(lon_min, lon_max, n_points)
+    lats1 = np.full(n_points, lat_min)
+    lats2 = np.full(n_points, lat_max)
+    lons_combined = np.concatenate([lons, lons[::-1]])
+    lats_combined = np.concatenate([lats1, lats2[::-1]])
+    return Polygon(zip(lons_combined, lats_combined))
+
+def adjust_longitudes(data, lon_dim='lon'):
+    """
+    Adjust the longitude coordinate of an xarray DataArray or Dataset
+    to the -180 to 180 range if they are originally in the 0 to 360 range.
+
+    Parameters
+    ----------
+    data : xarray.DataArray or Dataset
+        The data whose longitude coordinate will be adjusted.
+    lon_dim : str
+        The name of the longitude coordinate (default is 'lon').
+
+    Returns
+    -------
+    data : xarray.DataArray or Dataset
+        The data with adjusted longitude coordinate.
+    """
+    if lon_dim in data.coords:
+        lon = data.coords[lon_dim]
+        # If maximum longitude is greater than 180, adjust to -180 to 180
+        if lon.max() > 180:
+            new_lon = (((lon + 180) % 360) - 180)
+            data = data.assign_coords({lon_dim: new_lon}).sortby(lon_dim)
+    return data

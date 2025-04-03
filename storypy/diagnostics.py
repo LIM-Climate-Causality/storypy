@@ -1,5 +1,5 @@
 from .utils import stats
-from .processing import apply_region_mask
+from .processing import apply_region_mask, adjust_longitudes
 
 def test_mean_significance(sample_data):
     """Test if the mean of the sample_data is significantly different from zero."""
@@ -13,6 +13,9 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
     """
     Calculate the difference in climatological mean between two periods for a specific season and geographical region.
     """
+
+    target = adjust_longitudes(target, lon_dim='lon')
+    
     # Existing code to handle spatial dimensions
     spatial_dims = set(target.dims)
     lat_names = {'lat', 'latitude', 'Latitude', 'LAT'}
@@ -43,7 +46,7 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
 
     # Adjust time periods for seasonal or cross-year calculations
     def adjust_period_for_season(start_year, end_year, season):
-        if season == 'DJF':
+        if season == '12,1,2':
             period_start = f"{int(start_year)-1}-12"
             period_end = f"{int(end_year)}-02"
         else:
