@@ -19,10 +19,9 @@ setup(
         'netcdf4',
         'scipy',
         'regionmask',
-        'scikit-learn'
-        'ScalarMappable',
+        'scikit-learn',
         'shapely',
-        'fnmatch'
+        'fnmatch2'
     ],
     url='https://github.com/LIM-Climate-Causality/storypy',
     classifiers=[

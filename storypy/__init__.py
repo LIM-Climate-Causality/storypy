@@ -9,7 +9,7 @@ __author__ = "Richard Alawode, Julia Mindlin, Marlene Kretschmer"
 __credits__ = "LIM - Climate Causality"
 
 # Import core functionality from the package modules
-from .main import main
+from .main import main_direct, main_esmval
 from .plotting import (
     plot_precipitation_change,
     plot_function, create_three_panel_figure,
@@ -38,7 +38,8 @@ from .diagnostics import clim_change, test_mean_significance
 
 # Explicitly define the public API of the package
 __all__ = [
-    "main",
+    "main_direct",
+    "main_esmval",
     "plot_precipitation_change",
     "plot_function",
     "seasonal_data_months",
