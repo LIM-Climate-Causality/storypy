@@ -5,7 +5,7 @@ from ._diagnostics import clim_change, seasonal_data_months, test_mean_significa
 from storypy.evaluate.plot import plot_precipitation_change, plot_function
 
 class ESMValProcessor:
-    def __init__(self, config, user_config):
+    def __init__(self, config, user_config, driver_config=None):
         """
         Initialize the processor with esmvaltool config and user-defined config.
         """
@@ -15,6 +15,9 @@ class ESMValProcessor:
         self._compute_bounding_box()
         # Unpack frequently used config values
         uc = self.user_config
+        self.data_dir = uc['data_dir']
+        self.work_dir = uc['work_dir']
+        self.plot_dir = uc['plot_dir']
         self.region_method = uc["region_method"]
         self.box = uc["box"]
         self.period1 = uc["period1"]
@@ -24,9 +27,24 @@ class ESMValProcessor:
         self.region_extents = uc["region_extents"]
         self.var_names = uc["var_name"]
         self.titles = uc.get("titles", [])
+         # driver configuration (fall back to user_config values)
+        self.dc = driver_config or {}
+        self.driver_vars = self.dc.get('var_name', self.var_names)
+        self.driver_short_names = self.dc.get('short_name', self.driver_vars)
+
+        if len(self.driver_vars) != len(self.driver_short_names):
+            raise ValueError("Length of 'var_name' and 'short_name' must match in driver_config.")
+        self.driver_period1 = self.dc.get('period1', self.period1)
+        self.driver_period2 = self.dc.get('period2', self.period2)
+        self.driver_box = self.dc.get('box', self.box)
+        self.driver_work_dir = self.dc.get('work_dir', self.work_dir)
+        self.driver_season = self.dc.get('season', self.season)
+        self.driver_region_extents = self.dc.get('region_extents', self.region_extents)
+
         # Prepare storage
         self.ensemble_changes = {var: [] for var in self.var_names}
         self.time_series_changes = {var: [] for var in self.var_names}
+        self.driver_data = {var: [] for var in self.driver_vars}
         self.all_model_names = set()
         # Prepare output dirs
         os.makedirs(self.config["plot_dir"], exist_ok=True)
@@ -104,6 +122,53 @@ class ESMValProcessor:
                         print(f"KeyError: {e}. Skipping alias {alias} in dataset {dataset}.")
                         continue
 
+    def _process_drivers(self):
+        meta_dataset, _ = self._load_metadata()
+
+        for dataset, alias_list in meta_dataset.items():
+            meta_group = group_metadata(alias_list, "alias")
+
+            for alias, alias_members in meta_group.items():
+                self.all_model_names.add(alias)
+
+                for var in self.driver_vars:
+                    try:
+                        # Load the driver variable
+                        driver_data = {
+                            m['variable_group']: xr.open_dataset(m['filename'])[m['short_name']]
+                            for m in alias_members
+                            if m['dataset'] == dataset and m['variable_group'] == var
+                        }
+
+                        if not driver_data:
+                            print(f"No data found for driver '{var}' in alias '{alias}' of dataset '{dataset}'.")
+                            continue
+
+                        da = seasonal_data_months(driver_data[var], list(self.driver_season))
+
+                        if var == 'pr':
+                            da = da * 86400  # Convert from kg m-2 s-1 to mm/day
+
+                        delta = clim_change(
+                            da,
+                            period1=self.driver_period1,
+                            period2=self.driver_period2,
+                            region_method=self.region_method,
+                            box=self.driver_box,
+                            region_id=self.region_id,
+                            season=self.driver_season,
+                            preserve_time_series=False
+                        )
+
+                        # Add model dimension if needed
+                        if 'model' not in delta.dims:
+                            delta = delta.expand_dims(model=[alias])
+
+                        self.driver_data[var].append(delta)
+
+                    except Exception as e:
+                        print(f"Error processing driver '{var}' for alias '{alias}' in dataset '{dataset}': {e}")
+    
     def _combine_and_save(self):
         # Combine ensemble changes into Dataset and save
         combined = xr.Dataset({
@@ -118,6 +183,29 @@ class ESMValProcessor:
         combined.to_netcdf(out_file)
         print(f"Saved all model ensemble changes to {out_file}")
         return combined
+    
+    def _combine_drivers_and_save(self):
+        """
+        Combine processed driver variables across models and save as NetCDF.
+        """
+        if not self.driver_data:
+            print("No driver data to combine.")
+            return None
+
+        combined_driver_ds = xr.Dataset({
+            var: xr.concat(self.driver_data[var], dim='model')
+            for var in self.driver_vars
+        })
+
+        # Assign sorted model names
+        models = sorted(self.all_model_names)
+        for var in self.driver_vars:
+            combined_driver_ds[var] = combined_driver_ds[var].assign_coords(model=('model', models))
+
+        out_file = os.path.join(self.user_config['work_dir'], 'drivers_esmval.nc')
+        combined_driver_ds.to_netcdf(out_file)
+        print(f"Saved all driver variable changes to {out_file}")
+        return combined_driver_ds
 
     def _plot_spatial(self, combined):
         # plot spatial maps for each variable
@@ -152,11 +240,20 @@ class ESMValProcessor:
             if fig:
                 fig.savefig(os.path.join(self.user_config['plot_dir'], f"time_series_plot_{var}.png"))
 
-    def run(self):
+    def process_var(self):
         """
-        Execute the full processing workflow.
+        Process the target variable(s) and compute climatological changes.
+        This method is called within the run method.
         """
         self._process_data()
         combined = self._combine_and_save()
         self._plot_spatial(combined)
-        self._plot_timeseries()
+
+    def process_drivers(self):
+        """
+        Process the driver variables and compute climatological changes.
+        This method is called within the run method.
+        """
+        self._process_drivers()
+        combined_drivers = self._combine_drivers_and_save()
+        return combined_drivers
