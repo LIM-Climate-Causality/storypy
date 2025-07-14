@@ -9,7 +9,9 @@ from ._storylines import (
     hemispheric_plot,
     make_symmetric_colorbar,
     plot_ellipse,
-    confidence_ellipse
+    confidence_ellipse,
+    storyline_evaluation,
+    regression_coefficient
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "make_symmetric_colorbar",
     "plot_ellipse",
     "confidence_ellipse",
+    "storyline_evaluation",
+    "regression_coefficient",
 ]

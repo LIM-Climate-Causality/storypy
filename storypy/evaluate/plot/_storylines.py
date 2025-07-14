@@ -8,6 +8,70 @@ from matplotlib.patches import Ellipse
 from sklearn.linear_model import LinearRegression
 import matplotlib.transforms as transforms
 from numpy import linalg as la
+import os
+
+def storyline_evaluation(main_config, target, drivers, storyline_coefficient, gw_level=1):
+    # Load regression coefficient dataset
+    target_path = os.path.join(main_config["work_dir"], "regression_output", target, "regression_coefficients.nc")
+    if target == 'pr':
+        data = xr.open_dataset(target_path)# * 86400  # Convert to mm/day
+    else:
+        data = xr.open_dataset(target_path)
+
+    # Build the storylines
+    storylines = [
+        data['MEM'] + storyline_coefficient * data[drivers[1]] - storyline_coefficient * data[drivers[0]],
+        data['MEM'] + storyline_coefficient * data[drivers[1]] + storyline_coefficient * data[drivers[0]],
+        data['MEM'] - storyline_coefficient * data[drivers[1]] - storyline_coefficient * data[drivers[0]],
+        data['MEM'] - storyline_coefficient * data[drivers[1]] + storyline_coefficient * data[drivers[0]],
+        data['MEM']
+    ]
+
+    # Create descriptive names
+    storyline_labels = [
+        f"high {drivers[1]} low {drivers[0]}",
+        f"high {drivers[1]} high {drivers[0]}",
+        f"low {drivers[1]} low {drivers[0]}",
+        f"low {drivers[1]} high {drivers[0]}",
+        "MEM"
+    ]
+
+    # Stack into a DataArray
+    storyline_da = xr.concat(storylines, dim="storyline") * gw_level
+    storyline_da["storyline"] = storyline_labels
+    storyline_da.name = "storylines"
+
+    return storyline_da, storyline_labels
+
+def regression_coefficient(main_config, target, drivers, storyline_coefficient=None, gw_level=1):
+    """
+    Load regression coefficients for the specified target and drivers.
+
+    Parameters:
+        main_config (dict): Configuration containing 'work_dir'.
+        target (str): Target variable (e.g., 'pr').
+        drivers (list[str]): List of driver variable names.
+        storyline_coefficient (float, optional): Not used here, kept for compatibility.
+        gw_level (float): Not used here, kept for compatibility.
+
+    Returns:
+        list[xarray.DataArray]: List of coefficient DataArrays for each driver.
+        list[str]: Titles (driver names) for plotting.
+    """
+    target_path = os.path.join(main_config["work_dir"], "regression_output", target, "regression_coefficients.nc")
+    data = xr.open_dataset(target_path)
+
+    if target == 'pr':
+        data = data# * 86400  # Convert from kg/m2/s to mm/day
+
+    # Ensure all requested drivers exist
+    missing = [drv for drv in drivers if drv not in data]
+    if missing:
+        raise ValueError(f"Missing drivers in dataset: {missing}")
+
+    coefficients = [data[drv] for drv in drivers]
+    return coefficients, drivers
+
 
 def make_symmetric_colorbar(plot_range, num_steps=18):
     """Create arrays with color and tick levels that can be used as arguments

@@ -126,16 +126,3 @@ def compute_drivers_from_netcdf(driver_config):
     print(f"Saved driver regressors to: {out_dir}")
     return df_raw, df_scaled, df_standardized
 
-
-
-
-driver_config = dict(
-        var_name=['psl', 'tas', 'psl', 'psl'],            # <- actual variable names in NetCDF
-        short_name=['ubi', 'utas', 'esi', 'ctp'],           # <- names for regression/CSV outputs
-        period1=['1960', '1979'],
-        period2=['2070', '2099'],
-        # season=[12, 1, 2],
-        #box={'lat_min': -15, 'lat_max': 15, 'lon_min': -180, 'lon_max': 180}, # ta
-        box={'lat_min': -90, 'lat_max': 90, 'lon_min': -180, 'lon_max': 180}, # pw
-        work_dir='/climca/people/storylinetool/test_user/driver_test_outputs'
-    )

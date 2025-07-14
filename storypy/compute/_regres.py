@@ -4,7 +4,6 @@ import statsmodels.api as sm
 import pandas as pd
 import json 
 import os
-from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
 from sklearn import linear_model
 import glob
 from scipy import signal
