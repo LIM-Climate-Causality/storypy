@@ -73,7 +73,7 @@ class DirectProcessor:
             'lon_min': lon_min - 5 if lon_min - 5 >= -180 else -180,
             'lon_max': lon_max + 5 if lon_max + 5 <= 180 else 180
         }
-
+    
     def _find_common_models(self):
         model_sets = {}
         for var in self.var_names:
@@ -81,67 +81,114 @@ class DirectProcessor:
             if not os.path.exists(path):
                 print(f"Directory not found for variable {var}: {path}")
                 continue
-            files = os.listdir(path)
-            models = {f.split('_')[2] for f in files if f.endswith('.nc')}
-            model_sets[var] = models
-        if model_sets:
-            common = set.intersection(*model_sets.values())
-            print("Common models across all variables:", common)
-            return sorted(common)
-        return []
+            files = [f for f in os.listdir(path) if f.endswith('.nc')]
+            # Extract full model+member name (e.g., CNRM-ESM2-1_r15i1p1f2)
+            model_members = {f.split('_')[2] + '_' + f.split('_')[3] for f in files}
+            model_sets[var] = model_members
 
+        if model_sets:
+            common_model_members = set.intersection(*model_sets.values())
+            print("Common model+members across all variables:", common_model_members)
+            # Extract only model names (without member) for output
+            common_models = sorted({mm.split('_')[0] for mm in common_model_members})
+            return common_models
+
+        return []
+    
     def _process_var(self, var, common_models):
         path = os.path.join(self.data_dir, var, self.freq, self.grid)
         files = os.listdir(path)
+
         for m in common_models:
             ens_hist, ens_scen, ens_hist_gw, ens_scen_gw = [], [], [], []
+
             for f in files:
-                if m not in f: continue
+                if m not in f:
+                    continue
+
                 tas_name = 'tas_' + '_'.join(f.split('_')[1:])
+                var_file_path = os.path.join(path, f)
+                tas_file_path = os.path.join(self.data_dir, 'tas', self.freq, self.grid, tas_name)
+
                 if fnmatch.fnmatch(f, f"{var}_*_{m}_*historical*.nc"):
-                    ens_hist.append(xr.open_dataset(os.path.join(path, f)))
-                    ens_hist_gw.append(xr.open_dataset(os.path.join(self.data_dir, 'tas', self.freq, self.grid, tas_name)))
+                    try:
+                        ens_hist.append(xr.open_dataset(var_file_path))
+                    except FileNotFoundError:
+                        print(f"Missing historical file skipped: {var_file_path}")
+                        continue
+
+                    try:
+                        ens_hist_gw.append(xr.open_dataset(tas_file_path))
+                    except FileNotFoundError:
+                        print(f"Missing tas file for historical skipped: {tas_file_path}")
+                        continue
+
                 elif fnmatch.fnmatch(f, f"{var}_*_{m}_*{self.exp_name}*.nc"):
-                    ens_scen.append(xr.open_dataset(os.path.join(path, f)))
-                    ens_scen_gw.append(xr.open_dataset(os.path.join(self.data_dir, 'tas', self.freq, self.grid, tas_name)))
-            if not ens_hist or not ens_scen: continue
-            hist = xr.concat(ens_hist, dim='ensemble'); scen = xr.concat(ens_scen, dim='ensemble')
+                    try:
+                        ens_scen.append(xr.open_dataset(var_file_path))
+                    except FileNotFoundError:
+                        print(f"Missing scenario file skipped: {var_file_path}")
+                        continue
+
+                    try:
+                        ens_scen_gw.append(xr.open_dataset(tas_file_path))
+                    except FileNotFoundError:
+                        print(f"Missing tas file for scenario skipped: {tas_file_path}")
+                        continue
+
+            if not ens_hist or not ens_scen:
+                continue  # Skip this model if key data is missing
+
+            hist = xr.concat(ens_hist, dim='ensemble')
+            scen = xr.concat(ens_scen, dim='ensemble')
             self.target = {var: xr.concat([hist.mean('ensemble'), scen.mean('ensemble')], dim='time')}
+
             if ens_hist_gw and ens_scen_gw:
-                gh = xr.concat(ens_hist_gw, dim='ensemble'); gs = xr.concat(ens_scen_gw, dim='ensemble')
-                gw = xr.concat([gh.mean('ensemble'), gs.mean('ensemble')], dim='time').mean(('lat','lon'))
+                gh = xr.concat(ens_hist_gw, dim='ensemble')
+                gs = xr.concat(ens_scen_gw, dim='ensemble')
+                gw = xr.concat([gh.mean('ensemble'), gs.mean('ensemble')], dim='time').mean(('lat', 'lon'))
                 self.target['gw'] = gw
+
             try:
                 tv = seasonal_data_months(self.target[var], list(self.season))
-                if var=='pr': tv*=86400
+                if var == 'pr':
+                    tv *= 86400
+
                 ch = clim_change(tv, period1=self.period1, period2=self.period2,
-                                 region_method=self.region_method, box=self.box,
-                                 region_id=self.region_id, season=self.season,
-                                 preserve_time_series=False)
+                                region_method=self.region_method, box=self.box,
+                                region_id=self.region_id, season=self.season,
+                                preserve_time_series=False)
+
                 ts = clim_change(tv, period1=self.period1, period2=self.period2,
-                                 region_method=self.region_method, box=self.box,
-                                 region_id=self.region_id, season=self.season,
-                                 preserve_time_series=True)
+                                region_method=self.region_method, box=self.box,
+                                region_id=self.region_id, season=self.season,
+                                preserve_time_series=True)
+
                 sg = seasonal_data_months(self.target['gw'], list(self.season))
-                has_sp = set(('lat','lon')).issubset(sg.dims)
+                has_sp = set(('lat', 'lon')).issubset(sg.dims)
+
                 if has_sp:
                     gwc = clim_change(sg, period1=self.period1, period2=self.period2,
-                                     region_method=self.region_method, box=self.box,
-                                     region_id=self.region_id, season=self.season,
-                                     preserve_time_series=False)
+                                    region_method=self.region_method, box=self.box,
+                                    region_id=self.region_id, season=self.season,
+                                    preserve_time_series=False)
                 else:
                     gwc = clim_change(sg, period1=self.period1, period2=self.period2,
-                                     season=self.season, preserve_time_series=False)
+                                    season=self.season, preserve_time_series=False)
+
                 if not has_sp:
-                    gwc=gwc.expand_dims({'lat':ch['lat'],'lon':ch['lon']})
-                gv=gwc['tas']
-                norm = (ch/gv).expand_dims({'model':[m]})
-                norm_ts=(ts/gv).expand_dims({'model':[m]})
+                    gwc = gwc.expand_dims({'lat': ch['lat'], 'lon': ch['lon']})
+
+                gv = gwc['tas']
+                norm = (ch / gv).expand_dims({'model': [m]})
+                norm_ts = (ts / gv).expand_dims({'model': [m]})
+
                 self.ensemble_changes[var].append(norm)
                 self.time_series_changes[var].append(norm_ts)
+
             except KeyError as e:
                 print(f"KeyError: {e}. Skipping variable {var}.")
-    
+            
     def _process_driver_var(self, variable_name, common_models):
         path = os.path.join(self.data_dir, variable_name, self.freq, self.grid)
         files = os.listdir(path)
@@ -202,15 +249,35 @@ class DirectProcessor:
                 if short_name not in self.driver_data:
                     self.driver_data[short_name] = []
                 self.driver_data[short_name].append(da)
-
+    
     def _combine_and_save(self):
-        combined = xr.Dataset({
-            var: xr.concat([ds.to_dataarray() for ds in self.ensemble_changes[var]], dim='model', coords='minimal', compat='override')
-            for var in self.var_names
-        })
+        combined = xr.Dataset()
+
         for var in self.var_names:
-            combined[var] = combined[var].assign_coords(model=np.unique(combined[var]['model']))
-        out = os.path.join(self.work_dir, 'combined_changes.nc')
+            if not self.ensemble_changes[var]:
+                print(f"Warning: No data found for variable '{var}', skipping.")
+                continue
+
+            arrays = []
+            model_names = []
+
+            for ds in self.ensemble_changes[var]:
+                da = ds[var].squeeze(drop=True)
+
+                # Try to extract real model name
+                try:
+                    model_name = ds.attrs.get('model_id') or ds.coords['model'].values.item()
+                except Exception:
+                    model_name = f"model_{len(model_names)}"
+
+                arrays.append(da)
+                model_names.append(model_name)
+
+            data = xr.concat(arrays, dim='model', coords='minimal', compat='override')
+            data = data.assign_coords(model=('model', model_names))
+            combined[var] = data
+
+        out = os.path.join(self.work_dir, 'target.nc')
         combined.to_netcdf(out)
         print(f"Saved all model ensemble changes to {out}")
         return combined
@@ -244,32 +311,18 @@ class DirectProcessor:
                 os.makedirs(self.plot_dir, exist_ok=True)
                 fig.savefig(os.path.join(self.plot_dir, f"time_series_plot_{var}.png"))
 
-    # def run(self):
-    #     common = self._find_common_models()
-    #     # main change processing
-    #     for var in self.var_names:
-    #         path = os.path.join(self.data_dir, var, self.freq, self.grid)
-    #         if not os.path.exists(path):
-    #             continue
-    #         self._process_var(var, common)
-    #     combined = self._combine_and_save()
-    #     # driver processing
-    #     for var in self.driver_vars:
-    #         self._process_driver_var(var, common)
-    #     self._combine_and_save_drivers()
-    #     # plot time series
-    #     self._plot_timeseries()
-    # main change processing
+    # # main change processing
     def process_var(self):
-        common = self._find_common_models()
+        self.common_models = self._find_common_models()
         for var in self.var_names:
             path = os.path.join(self.data_dir, var, self.freq, self.grid)
             if not os.path.exists(path):
                 continue
-            self._process_var(var, common)
+            self._process_var(var, self.common_models)
         combined = self._combine_and_save()
         # plot time series
         self._plot_timeseries()
+
     # driver processing
     def process_driver(self):
         common = self._find_common_models()
