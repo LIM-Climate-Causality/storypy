@@ -1,6 +1,11 @@
 from ._compute_driver import (
-    stand,
-    compute_drivers_from_netcdf
+    stand_numpy,
+    stand_pandas,
+    compute_drivers_from_netcdf,
+    driver_indices,
+    _collect_scalar_drivers,
+    _build_drivers_dataset,
+    _select_one_file_per_var
 )
 from ._mlr import run_regression
 from ._regres import (

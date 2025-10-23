@@ -6,6 +6,7 @@ from ._plotting import (
 from ._storylines import (
     create_five_panel_figure,
     create_three_panel_figure,
+    create_multi_panel_figure,
     hemispheric_plot,
     make_symmetric_colorbar,
     plot_ellipse,
@@ -20,6 +21,7 @@ __all__ = [
     "plot_precipitation_change",
     "create_five_panel_figure",
     "create_three_panel_figure",
+    "create_multi_panel_figure",
     "hemispheric_plot",
     "make_symmetric_colorbar",
     "plot_ellipse",

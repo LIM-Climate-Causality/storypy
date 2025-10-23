@@ -148,7 +148,7 @@ class spatial_MLR(object):
         elif var == 'pr':
             relative_importance_values = relative_importance_values.rename({'pr':self.regressor_names[1]})
         else:
-            relative_importance_values = relative_importance_values.rename({'ua':self.regressor_names[1]})
+            relative_importance_values = relative_importance_values.rename({var:self.regressor_names[1]})
     
         relative_importance_values.to_netcdf(path+'/'+var+'/regression_coefficients_relative_importance.nc')
         results_R2.to_netcdf(path+'/'+var+'/R2.nc')

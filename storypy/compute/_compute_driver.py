@@ -4,12 +4,21 @@ import pandas as pd
 import os
 import glob
 
-def stand(dato):
+from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
+
+def stand_numpy(dato):
     """
     Standardize the data (z-score normalization)
     """
     anom = (dato - np.mean(dato)) / np.std(dato)
     return anom
+
+def stand_pandas(series: pd.Series) -> pd.Series:
+    """Standardize across models (z-score)."""
+    std = series.std(ddof=0)
+    if std == 0 or np.isnan(std):
+        return (series - series.mean()) * np.nan
+    return (series - series.mean()) / std
 
 def compute_drivers_from_netcdf(driver_config):
     """
@@ -38,7 +47,7 @@ def compute_drivers_from_netcdf(driver_config):
         raise FileNotFoundError(f"No .nc files found in {work_dir}")
 
     # Load the global warming index file
-    gw_file = os.path.join(work_dir, "remote_driver_gw.nc")
+    gw_file = os.path.join(work_dir, "driver_gw.nc")
     if not os.path.exists(gw_file):
         raise FileNotFoundError("Missing required global warming file: remote_driver_gw.nc")
     gw_ds = xr.open_dataset(gw_file)
@@ -113,7 +122,7 @@ def compute_drivers_from_netcdf(driver_config):
     df_scaled = pd.DataFrame(data_scaled, index=common_models)
 
     # Standardize the scaled data (z-score normalization)
-    df_standardized = df_scaled.apply(stand, axis=0)
+    df_standardized = df_scaled.apply(stand_numpy, axis=0)
 
     # Create the output directory and save the dataframes as CSV
     out_dir = os.path.join(work_dir, "remote_drivers")
@@ -126,3 +135,112 @@ def compute_drivers_from_netcdf(driver_config):
     print(f"Saved driver regressors to: {out_dir}")
     return df_raw, df_scaled, df_standardized
 
+
+
+EXCLUDE_VARS = {"u850", "tas", "sst", "psl", "pr", "pr_djf", "pr_jja", "u850_djf", "u850_jja"}
+
+
+def _select_one_file_per_var(dataset_list, dataset_name, var_group):
+    """Pick exactly one entry for a (dataset, variable_group).
+    Prefer esmvaltool's alias == 'EnsembleMean'; otherwise first match.
+    """
+    for m in dataset_list:
+        if (
+            m.get("dataset") == dataset_name
+            and m.get("variable_group") == var_group
+            and m.get("alias") == "EnsembleMean"
+        ):
+            return m
+    for m in dataset_list:
+        if m.get("dataset") == dataset_name and m.get("variable_group") == var_group:
+            return m
+    return None
+
+
+def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
+    """Return (rd_list, models) and persist a NetCDF with one scalar per model/driver."""
+    rd_list = []
+    models = []
+
+    for dataset, dataset_list in meta.items():
+        ts_dict = {}
+        var_groups = sorted({m["variable_group"] for m in dataset_list})
+
+        for var in var_groups:
+            if var in EXCLUDE_VARS:
+                continue
+            sel = _select_one_file_per_var(dataset_list, dataset, var)
+            if sel is None:
+                continue
+            da = xr.open_dataset(sel["filename"])[sel["short_name"]]
+            if "time" in da.dims:
+                value = da.mean(dim="time", skipna=True).item()
+            else:
+                value = float(da.item()) if da.size == 1 else float(da.mean().item())
+            ts_dict[var] = value
+
+        if "gw" in ts_dict:
+            rd_list.append(ts_dict)
+            models.append(dataset)
+        else:
+            print(f"There is no 'gw' for model {dataset}; skipping.")
+
+    if rd_list:
+        drivers_ds = _build_drivers_dataset(rd_list, models)
+        out_dir = os.path.join(work_dir, "remote_drivers")
+        os.makedirs(out_dir, exist_ok=True)
+        drivers_nc = os.path.join(out_dir, "drivers.nc")
+        drivers_ds.to_netcdf(drivers_nc)
+        print(f"Saved drivers (one scalar per model/driver) to {drivers_nc}")
+    else:
+        print("No models with 'gw' found; NetCDF not written.")
+
+    return rd_list, models
+
+
+def _build_drivers_dataset(rd_list, models):
+    all_vars = sorted(set().union(*[d.keys() for d in rd_list]))
+    data_vars = {}
+    for var in all_vars:
+        vals = [d.get(var, np.nan) for d in rd_list]
+        data_vars[var] = ("model", np.asarray(vals, dtype=np.float64))
+    return xr.Dataset(data_vars, coords={"model": models})
+
+
+def driver_indices(config):
+    meta = group_metadata(config["input_data"].values(), "dataset")
+
+    rd_list, models = _collect_scalar_drivers(meta, config["work_dir"])
+    if not rd_list:
+        print("No drivers collected; aborting downstream steps.")
+        return
+
+    regressor_names = list(rd_list[0].keys())
+    if "gw" in regressor_names:
+        regressor_names.remove("gw")
+
+    regressors_scaled = {}
+    regressors = {}
+
+    for rd in regressor_names:
+        numer = np.array([rd_list[m_idx][rd] for m_idx, _ in enumerate(rd_list)], dtype=float)
+        denom = np.array([rd_list[m_idx]["gw"] for m_idx, _ in enumerate(rd_list)], dtype=float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scaled = numer / denom
+        regressors_scaled[rd] = scaled
+        regressors[rd] = numer
+
+    out_dir = os.path.join(config["work_dir"], "remote_drivers")
+    os.makedirs(out_dir, exist_ok=True)
+
+    df_raw = pd.DataFrame(regressors, index=models)
+    df_scaled = pd.DataFrame(regressors_scaled, index=models)
+    df_stand = df_scaled.apply(stand_pandas, axis=0)
+
+    df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
+    df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
+    df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+
+if __name__ == "__main__":
+    with run_diagnostic() as config:
+        driver_indices(config)

@@ -5,7 +5,7 @@ from storypy.utils import np, xr
 from ._diagnostics import clim_change, seasonal_data_months
 from storypy.evaluate.plot import plot_precipitation_change, plot_function
 
-class DirectProcessor:
+class ModelDataPreprocessor:
     def __init__(self, user_config, driver_config=None):
         """
         Initialize processor for direct CMIP6 data processing without esmvaltool metadata.

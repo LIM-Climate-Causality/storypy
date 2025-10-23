@@ -1,4 +1,5 @@
 from storypy.utils import np, xr, plt, ccrs, gridspec, cfeature, pd
+from shapely.geometry.polygon import Polygon
 
 def create_arc(lon_min, lon_max, lat_min, lat_max, n_points=100):
     lons = np.linspace(lon_min, lon_max, n_points)

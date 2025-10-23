@@ -79,8 +79,8 @@ def run_regression(config: dict) -> list[str]:
     var = target_vars[0]
 
     # Paths to input files
-    target_path = os.path.join(config['work_dir'], "target.nc")
-    driver_path = os.path.join(config['work_dir'], "driver_outputs/remote_drivers/scaled_standardized_drivers.csv")
+    target_path = os.path.join(config['work_dir'], f"target_{var}.nc")
+    driver_path = os.path.join(config['work_dir'], "storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv")
 
     # Load dataset and regressors
     ds = xr.open_dataset(target_path)
