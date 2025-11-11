@@ -6,7 +6,6 @@ from storypy.utils import np, xr
 from ._diagnostics import clim_change, seasonal_data_months
 from storypy.evaluate.plot import plot_precipitation_change, plot_function
 
-@attrs.define(slots=False, kw_only=True)
 class ModelDataPreprocessor:
     def __init__(self, user_config, driver_config=None):
         """

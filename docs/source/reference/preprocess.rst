@@ -9,26 +9,53 @@
    <br /> <br />
 
 
-storypy.preprocess module
-===========================
+storypy.preprocess package
+==========================
 
 .. automodule:: storypy.preprocess
    :members:
    :undoc-members:
    :show-inheritance:
 
-----
+ESMValTool Preprocessing
+------------------------
 
-storypy.preprocess Preprocessing ESMValTool class
---------------------------------------------
+.. automodule:: storypy.preprocess._esmval
+   :members: __init__, process_var, process_driver
+   :undoc-members:
+   :show-inheritance:
+
+Modeldata Preprocessing
+-----------------------
+
+.. automodule:: storypy.preprocess._modeldata
+   :members: __init__, process_var, process_driver
+   :undoc-members:
+   :show-inheritance:
+
+
+
+storypy.preprocess module
+=========================
+
+.. currentmodule:: storypy.preprocess
+
+.. automodule:: storypy.preprocess
+   :members: __init__, process_var, process_driver
+   :undoc-members:
+   :show-inheritance:
+
+Preprocessing ESMValTool class
+------------------------------
 
 .. autoclass:: ESMValProcessor
-	:members: init, process_var, process_driver
+   :members: __init__, process_var, process_driver
 
-storypy.preprocess Preprocessing Modeldata class
---------------------------------------------
+Preprocessing Modeldata class
+-----------------------------
 
 .. autoclass:: ModelDataPreprocessor
-	:members: init, process_var, process_driver
+   :members: __init__, process_var, process_driver
+
 
 

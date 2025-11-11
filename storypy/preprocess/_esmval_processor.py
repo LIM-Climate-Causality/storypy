@@ -13,7 +13,6 @@ def parse_config(file):
     config['input_data'] = _get_input_data_files(config)
     return config
 
-@attrs.define(slots=False, kw_only=True)
 class ESMValProcessor:
     def __init__(self, config, user_config, driver_config=None):
         """

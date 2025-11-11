@@ -79,6 +79,10 @@ html_extra_path = ["google0b2594d760cfdda3.html"]
 # Sort by order specified and not alphabetically
 autodoc_member_order = "bysource"
 
+autodoc_mock_imports = [
+    "xarray", "netCDF4", "cartopy", "esmvalcore", "fnmatch", "warnings", "os",  # add others as needed
+]
+
 """numpydoc_attributes_as_param_list = True
 numpydoc_show_class_members = True
 """
