@@ -9,7 +9,7 @@
    <br /> <br />
 
 
-ibicus.debias module
+storypy.preprocess module
 ===========================
 
 .. automodule:: storypy.preprocess
