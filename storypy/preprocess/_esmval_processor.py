@@ -1,4 +1,5 @@
 import os
+import warnings
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months, test_mean_significance
@@ -11,6 +12,8 @@ def parse_config(file):
     config = get_cfg(file)           
     config['input_data'] = _get_input_data_files(config)
     return config
+
+@attrs.define(slots=False, kw_only=True)
 class ESMValProcessor:
     def __init__(self, config, user_config, driver_config=None):
         """
