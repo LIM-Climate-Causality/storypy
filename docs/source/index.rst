@@ -55,20 +55,20 @@ _____________
 **Documentation / API reference**
 
 * :doc:`reference/api`
-   * :doc:`reference/debias`
+   * :doc:`reference/compute`
    * :doc:`reference/evaluate`
-   * :doc:`reference/utils`
-   * :doc:`reference/variables`
+   * :doc:`reference/preprocess`
+   * :doc:`reference/data`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :caption: Documentation
 
-   ibicus.debias module <reference/debias>
-   ibicus.evaluate module <reference/evaluate>
-   ibicus.utils module <reference/utils>
-   ibicus.variables module <reference/variables>
+   storypy.compute module <reference/compute>
+   storypy.evaluate module <reference/evaluate>
+   storypy.preprocess module <reference/preprocess>
+   storypy.data module <reference/data>
 
 License
 -------
@@ -81,7 +81,7 @@ __ https://github.com/LIM-Climate-Causality/storypy/blob/main/LICENSE
 Acknowledgements
 ----------------
 
-The development of this package was supported by the European Centre for Mid-term Weather Forecasts (ECMWF) as part of the `ECMWF Summer of Weather Code <https://esowc.ecmwf.int/>`_
+The development of this package was supported by the LIM, leipzig University with partnership funding from the DFG (Deutsche Forschungsgemeinschaft) under AC3
 
 .. image:: images/logos.png
    :width: 800
