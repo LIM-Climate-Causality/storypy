@@ -4,7 +4,7 @@ API reference
 .. toctree::
    :maxdepth: 4
 
-   debias
+   compute
    evaluate
-   utils
-   variables
+   preprocess
+   data
