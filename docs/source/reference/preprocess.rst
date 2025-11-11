@@ -32,30 +32,3 @@ Modeldata Preprocessing
    :members: __init__, process_var, process_driver
    :undoc-members:
    :show-inheritance:
-
-
-
-storypy.preprocess module
-=========================
-
-.. currentmodule:: storypy.preprocess
-
-.. automodule:: storypy.preprocess
-   :members: __init__, process_var, process_driver
-   :undoc-members:
-   :show-inheritance:
-
-Preprocessing ESMValTool class
-------------------------------
-
-.. autoclass:: ESMValProcessor
-   :members: __init__, process_var, process_driver
-
-Preprocessing Modeldata class
------------------------------
-
-.. autoclass:: ModelDataPreprocessor
-   :members: __init__, process_var, process_driver
-
-
-
