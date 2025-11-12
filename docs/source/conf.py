@@ -38,7 +38,7 @@ extensions = [
 
 # If your modules import heavy/optional deps, mock them so RTD can import
 autodoc_mock_imports = [
-    "xarray", "netCDF4", "cartopy", "esmvalcore",
+    "xarray", "netCDF4", "cartopy",
     "dask", "cfgrib", "matplotlib", "numpy", "pandas", "scipy",
 ]
 
