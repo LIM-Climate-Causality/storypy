@@ -46,8 +46,11 @@ intersphinx_mapping = {
 
 # If your modules import heavy/optional deps, mock them so RTD can import
 autodoc_mock_imports = [
+    "esmvaltool",
     "xarray", "netCDF4", "cartopy",
-    "dask", "cfgrib", "matplotlib", "numpy", "pandas", "scipy",
+    "dask", "cfgrib", "cftime", "zarr", "eccodes",
+    "numpy", "pandas", "scipy", "sklearn",
+    "matplotlib", "xesmf", "yaml", "pooch",
 ]
 
 # Generate autosummary stub pages for modules/classes/functions
@@ -66,7 +69,10 @@ autodoc_default_options = {
 autodoc_typehints = "description"
 autodoc_typehints_format = "fully-qualified"
 
+autoclass_content = "both"
+
 # Napoleon (NumPy/Google style) settings
+extensions += ["sphinx.ext.napoleon"]
 napoleon_google_docstring = False   # you’re likely using NumPy style
 napoleon_numpy_docstring = True
 napoleon_use_param = True

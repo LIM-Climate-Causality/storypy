@@ -18,7 +18,7 @@ storypy.preprocess module
    :show-inheritance:
 
 ESMValTool Preprocessing
-========================
+------------------------
 
 .. currentmodule:: storypy.preprocess._esmval_processor
 

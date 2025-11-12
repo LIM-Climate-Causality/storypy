@@ -14,6 +14,22 @@ def parse_config(file):
     return config
 
 class ESMValProcessor:
+    """
+        Initialize processor for direct CMIP6 data processing without esmvaltool metadata.
+
+        driver_config usage:
+        - pass a dict with keys to customize remote‐driver computation separately from main processing.
+        - Supported keys:
+          * 'var_name': list of variables to compute drivers for (defaults to user_config['var_name']).
+          * 'box': spatial bounding box dict with lat_min, lat_max, lon_min, lon_max (defaults to main box).
+          * 'work_dir': path to directory where driver .nc outputs will be saved (defaults to main work_dir).
+        - Any key not provided falls back to the corresponding setting in user_config.
+
+        Parameters:
+        - user_config: dict for main processing (variables, periods, region, directories).
+        - driver_config: optional dict for remote‐driver computation; keys can override
+          var_name, box, work_dir (for driver outputs), etc.
+        """
     def __init__(self, config, user_config, driver_config=None):
         """
         Initialize the processor with esmvaltool config and user-defined config.
