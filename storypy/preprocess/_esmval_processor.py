@@ -1,3 +1,42 @@
+"""
+storypy.preprocess._esmval_processor
+====================================
+
+Module for preprocessing CMIP6 data and associated drivers
+using the ESMValTool configuration system. The `ESMValProcessor`
+class provides a high-level interface to read, process, and
+aggregate ensemble data directly from ESMValTool-compatible
+metadata.
+
+Typical workflow
+----------------
+1. Parse a user-defined ESMValTool configuration file with :func:`parse_config`.
+2. Initialize an :class:`ESMValProcessor` instance with configuration and
+   user settings.
+3. Call :meth:`process_var` to process target variables.
+4. Call :meth:`process_driver` to process and aggregate driver variables.
+
+Example
+-------
+>>> from storypy.preprocess._esmval_processor import parse_config, ESMValProcessor
+>>> cfg = parse_config("config.yml")
+>>> user_cfg = {
+...     "work_dir": "./output",
+...     "plot_dir": "./output/plots",
+...     "region_method": "box",
+...     "box": {"lat_min": -10, "lat_max": 10, "lon_min": 0, "lon_max": 50},
+...     "period1": [1950, 1980],
+...     "period2": [1990, 2020],
+...     "region_id": "Tropical_Africa",
+...     "season": ["DJF"],
+...     "region_extents": [[-10, 10, 0, 50]],
+...     "var_name": ["pr"],
+... }
+>>> processor = ESMValProcessor(cfg, user_cfg)
+>>> processor.process_var()      # process target variable(s)
+>>> processor.process_driver()   # process driver variables
+"""
+
 import os
 import warnings
 from storypy.utils import np, xr
@@ -8,31 +47,98 @@ from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metada
 from esmvaltool.diag_scripts.shared._base import _get_input_data_files
 
 def parse_config(file):
-    """Parse the settings file."""
+    """
+    Parse an ESMValTool configuration file.
+
+    Reads and expands an ESMValTool YAML configuration to include
+    resolved paths to input data files.
+
+    Parameters
+    ----------
+    file : str or path-like
+        Path to the ESMValTool configuration YAML file.
+
+    Returns
+    -------
+    dict
+        Parsed configuration dictionary containing ``input_data``
+        and other ESMValTool runtime settings.
+
+    Examples
+    --------
+    >>> from storypy.preprocess._esmval_processor import parse_config
+    >>> cfg = parse_config("config.yml")
+    >>> list(cfg.keys())
+    ['input_data', 'run_dir', 'output_dir', ...]
+    """
     config = get_cfg(file)           
     config['input_data'] = _get_input_data_files(config)
     return config
 
 class ESMValProcessor:
     """
-        Initialize processor for direct CMIP6 data processing without esmvaltool metadata.
+    High-level processor for CMIP6 data using ESMValTool metadata.
 
-        driver_config usage:
-        - pass a dict with keys to customize remote‐driver computation separately from main processing.
-        - Supported keys:
-          * 'var_name': list of variables to compute drivers for (defaults to user_config['var_name']).
-          * 'box': spatial bounding box dict with lat_min, lat_max, lon_min, lon_max (defaults to main box).
-          * 'work_dir': path to directory where driver .nc outputs will be saved (defaults to main work_dir).
-        - Any key not provided falls back to the corresponding setting in user_config.
+    This class handles loading, preprocessing, computing climatological
+    changes, and generating plots for climate variables and remote drivers.
+    It is designed to operate directly on the configuration and metadata
+    produced by ESMValTool diagnostics.
 
-        Parameters:
-        - user_config: dict for main processing (variables, periods, region, directories).
-        - driver_config: optional dict for remote‐driver computation; keys can override
-          var_name, box, work_dir (for driver outputs), etc.
-        """
+    Parameters
+    ----------
+    config : dict
+        Parsed ESMValTool configuration dictionary (see :func:`parse_config`).
+    user_config : dict
+        User-defined configuration dictionary controlling variable names,
+        time periods, spatial regions, output paths, and plotting options.
+    driver_config : dict, optional
+        Optional configuration dictionary for processing driver variables.
+        Keys can override ``var_name``, ``period1``, ``period2``,
+        ``box``, or ``work_dir``.
+
+    Attributes
+    ----------
+    ensemble_changes : dict
+        Stores computed climatological changes for each variable across models.
+    time_series_changes : dict
+        Stores time series of changes for each variable.
+    driver_data : dict
+        Processed driver variables grouped by model.
+    all_model_names : set
+        All dataset/alias names encountered during processing.
+
+    Notes
+    -----
+    The workflow generally proceeds as follows:
+
+    1. Initialize the processor with ESMValTool and user configurations.
+    2. Call :meth:`process_var` to compute climatological changes for target variables.
+    3. Call :meth:`process_driver` to compute and aggregate driver variables.
+    4. The results are saved to NetCDF files and corresponding plots.
+
+    Example
+    -------
+    >>> cfg = parse_config("config.yml")
+    >>> user_cfg = {...}  # user-defined settings
+    >>> proc = ESMValProcessor(cfg, user_cfg)
+    >>> proc.process_var()
+    >>> proc.process_driver()
+    """
     def __init__(self, config, user_config, driver_config=None):
         """
-        Initialize the processor with esmvaltool config and user-defined config.
+        Initialize the ESMValProcessor instance.
+
+        Sets up configuration attributes, creates output directories,
+        and prepares internal containers for storing processed data.
+
+        Parameters
+        ----------
+        config : dict
+            ESMValTool configuration from :func:`parse_config`.
+        user_config : dict
+            User-defined processing options.
+        driver_config : dict, optional
+            Overrides for driver variable settings.
         """
         self.config = config
         self.user_config = user_config
@@ -294,17 +400,40 @@ class ESMValProcessor:
 
     def process_var(self):
         """
-        Process the target variable(s) and compute climatological changes.
-        This method is called within the run method.
+        Process target variables and compute climatological changes.
+
+        This method loops through all datasets and variables defined in
+        ``user_config``, computes ensemble-mean climatological changes
+        between the two defined time periods, saves the results as
+        NetCDF, and generates spatial plots.
+
+        Returns
+        -------
+        xarray.Dataset
+            Combined dataset containing climatological changes for all variables.
+
+        See Also
+        --------
+        process_driver : process driver (remote forcing) variables.
         """
         self._process_data()
         combined = self._combine_and_save()
         self._plot_spatial(combined)
+        return combined
 
     def process_driver(self):
         """
-        Process the driver variables and compute climatological changes.
-        This method is called within the run method.
+        Process and combine driver (remote forcing) variables.
+
+        This method processes all driver variables specified in
+        ``driver_config`` or ``user_config``. It computes climatological
+        changes, aggregates across models, saves the results as NetCDF,
+        and returns the combined dataset.
+
+        Returns
+        -------
+        xarray.Dataset
+            Combined dataset containing climatological changes for all drivers.
         """
         self._process_drivers()
         combined_drivers = self._combine_drivers_and_save()
