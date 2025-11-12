@@ -76,12 +76,12 @@ napoleon_attr_annotations = True
 
 # Intersphinx: cross-links to external APIs
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", {}),
-    "numpy": ("https://numpy.org/doc/stable/", {}),
-    "xarray": ("https://docs.xarray.dev/en/stable/", {}),
-    "pandas": ("https://pandas.pydata.org/docs/", {}),
-    "matplotlib": ("https://matplotlib.org/stable/", {}),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", {}),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
 }
 
 templates_path = ["_templates"]
@@ -90,7 +90,7 @@ todo_include_todos = False
 
 # --- HTML output --------------------------------------------------------------
 html_theme = "sphinx_rtd_theme"
-html_static_path = ["_static"]
+html_static_path = []
 html_theme_options = {
     "collapse_navigation": False,
     "navigation_depth": 4,
