@@ -20,15 +20,21 @@ storypy.preprocess module
 ESMValTool Preprocessing
 ------------------------
 
-.. automodule:: storypy.preprocess._esmval_processor
+.. currentmodule:: storypy.preprocess._esmval_processor
+
+.. autoclass:: ESMValProcessor
    :members: __init__, process_var, process_driver
    :undoc-members:
    :show-inheritance:
 
+.. autofunction:: parse_config
+
 Modeldata Preprocessing
 -----------------------
 
-.. automodule:: storypy.preprocess._netcdf_processor
+.. currentmodule:: storypy.preprocess._netcdf_processor
+
+.. autoclass:: NetCDFProcessor
    :members: __init__, process_var, process_driver
    :undoc-members:
    :show-inheritance:
