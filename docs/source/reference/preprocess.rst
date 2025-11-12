@@ -17,9 +17,7 @@ ESMValTool Preprocessing
 .. autofunction:: parse_config
 
 .. autoclass:: ESMValProcessor
-   :members: process_var, process_driver
-   :show-inheritance:
-   :inherited-members:
+   :members: __init__, process_var, process_driver
 
 
 ModelData Preprocessing
@@ -29,5 +27,3 @@ ModelData Preprocessing
 
 .. autoclass:: ModelDataPreprocessor
    :members:
-   :undoc-members:
-   :show-inheritance:
