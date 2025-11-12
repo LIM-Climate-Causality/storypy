@@ -1,50 +1,48 @@
-.. ibicus documentation master file, created by
-   sphinx-quickstart on Wed Mar 30 16:04:07 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. storypy documentation master file
 
 Welcome to storypy's documentation!
-========================================
+===================================
 
-**storypy is a python based packages that provides a tailored interface for computing climate storylines.**
+**storypy** is a Python package that provides a tailored interface for computing climate storylines.
 
-storypy privides:
+It offers:
+----------
 
-- a set of functions to analyze multi‐model ensembles by focusing on the identification of dynamical storylines.
+- A set of functions to analyze multi‐model ensembles, focusing on the identification of dynamical storylines.
+- Customizable options for selecting remote drivers, target seasons, and climate variables or climatic‐impact drivers.
+- Flexibility and adaptability for various research and policy applications.
 
-- customizable options for selecting remote drivers, target seasons, and climate variables or climatic‐impact drivers, the storypy provides flexibility and adaptability for various research and policy applications
+How to cite:
+------------
 
-How to cite: Alawode, R., Mindlin, J., Kretschmer, M........, 2024.
+Alawode, R., Mindlin, J., Kretschmer, M., *et al.* (2024).  
+*storypy: A Python interface for climate storyline computation.*
 
-Documentation
-_____________
+---
 
-**Getting Started**
+Getting Started
+===============
 
-* :doc:`getting_started/overview`
-* :doc:`getting_started/installing`
-* :doc:`getting_started/whatarestorylines`
+These pages will help you install and use **storypy** for the first time.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Getting Started
 
    getting_started/overview
    getting_started/installing
    getting_started/whatarestorylines
 
-**Tutorials**
+---
 
-- `Zappa_and_Shepherd_2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/zappa_shepherd.ipynb>`_
-- `Mindlin_2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/mindlin_2020>`_
-- `Monerie_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/monerie_2023.ipynb>`_
-- `Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/ghosh_2023.ipynb>`_
+Tutorials
+=========
 
+Below are example workflows that demonstrate how to use **storypy** in practice.  
+Each notebook is hosted on **nbviewer** and linked directly.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Tutorials
 
    Zappa_and_Shepherd_2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/zappa_shepherd.ipynb>
@@ -52,37 +50,43 @@ _____________
    Monerie_2023 Debiasers <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/monerie_2023.ipynb>
    Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/ghosh_2023.ipynb>
 
-**Documentation / API reference**
+---
 
-* :doc:`reference/api`
-   * :doc:`reference/compute`
-   * :doc:`reference/evaluate`
-   * :doc:`reference/preprocess`
-   * :doc:`reference/data`
+API Reference
+=============
+
+This section provides the technical documentation for **storypy**, including all modules, classes, and functions.
 
 .. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: Documentation
+   :maxdepth: 2
+   :caption: API Reference
 
-   storypy.compute module <reference/compute>
-   storypy.evaluate module <reference/evaluate>
-   storypy.preprocess module <reference/preprocess>
-   storypy.data module <reference/data>
+   reference/api
+   reference/preprocess
+   reference/compute
+   reference/evaluate
+   reference/data
+   reference/utils
+
+---
 
 License
--------
+=======
 
-storypy is available under the open source `MIT License`__.
+**storypy** is available under the open source `MIT License`__.
 
 __ https://github.com/LIM-Climate-Causality/storypy/blob/main/LICENSE
 
+---
 
 Acknowledgements
-----------------
+================
 
-The development of this package was supported by the LIM, leipzig University with partnership funding from the DFG (Deutsche Forschungsgemeinschaft) under AC3
+The development of this package was supported by the **Leipzig Institute for Meteorology (LIM)**,  
+with partnership funding from the **Deutsche Forschungsgemeinschaft (DFG)** under AC3.
 
 .. image:: images/logos.png
    :width: 800
    :alt: ECMWF logos
+   :align: center
+

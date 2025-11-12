@@ -18,12 +18,12 @@ storypy.preprocess module
    :show-inheritance:
 
 ESMValTool Preprocessing
-------------------------
+========================
 
 .. currentmodule:: storypy.preprocess._esmval_processor
 
 .. autoclass:: ESMValProcessor
-   :members: __init__, process_var, process_driver
+   :members:
    :undoc-members:
    :show-inheritance:
 
@@ -35,6 +35,6 @@ Modeldata Preprocessing
 .. currentmodule:: storypy.preprocess._netcdf_processor
 
 .. autoclass:: NetCDFProcessor
-   :members: __init__, process_var, process_driver
+   :members:
    :undoc-members:
    :show-inheritance:

@@ -10,79 +10,83 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+# docs/source/conf.py
 import os
 import sys
+from datetime import datetime
 
-# sys.path.insert(0, os.path.abspath('.'))
-# sys.path.insert(0, os.path.abspath('..'))
+# --- Paths --------------------------------------------------------------------
+# Assuming this file lives in docs/source/, put the repo root on sys.path
 sys.path.insert(0, os.path.abspath("../.."))
 
-
-# -- Project information -----------------------------------------------------
-
+# --- Project info -------------------------------------------------------------
 project = "storypy"
-copyright = "2025, Leipzig Institute for Meteorology"
-author = "LIM"
+author = "Leipzig Institute for Meteorology (LIM)"
+copyright = f"{datetime.now():%Y}, {author}"
+release = ""   # e.g. "1.0.0" if you want it shown
+version = release
 
-
-# -- General configuration ---------------------------------------------------
-
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
+# --- General configuration ----------------------------------------------------
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.doctest",
-    # "matplotlib.sphinxext.plot_directive",
-    "numpydoc",  # "sphinx.ext.napoleon"
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",   # Google/NumPy docstrings
+    "sphinx.ext.viewcode",   # 'View source' links
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
 ]
 
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+# If your modules import heavy/optional deps, mock them so RTD can import
+autodoc_mock_imports = [
+    "xarray", "netCDF4", "cartopy", "esmvalcore",
+    "dask", "cfgrib", "matplotlib", "numpy", "pandas", "scipy",
+]
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+# Generate autosummary stub pages for modules/classes/functions
+autosummary_generate = True
 
+# Autodoc defaults (sane, readable API pages)
+autodoc_default_options = {
+    "members": True,            # include class & module members
+    "undoc-members": True,      # show members without docstrings
+    "show-inheritance": True,
+    "inherited-members": False, # set True if you want base class methods too
+    "member-order": "bysource", # keep your code order
+}
 
-# -- Options for HTML output -------------------------------------------------
-
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#
-html_theme = "sphinx_rtd_theme"  # "alabaster"
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
-
-
-# -- Some new settings ------------------------------------------------------------------
-# Automatically extract typehints when specified and place them in
-# descriptions of the relevant function/method.
-autodoc_typehints = "none"  # description
+# Type hints—keep signatures clean but show hints in the description block
+autodoc_typehints = "description"
 autodoc_typehints_format = "fully-qualified"
 
-# Styling of autodoc: https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
-# Don't show class signature with the class' name.
-autodoc_class_signature = "mixed"
-autodoc_member_order = "groupwise"
+# Napoleon (NumPy/Google style) settings
+napoleon_google_docstring = False   # you’re likely using NumPy style
+napoleon_numpy_docstring = True
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_preprocess_types = True
+napoleon_attr_annotations = True
 
-# Do not preserve default arguments
-autodoc_preserve_defaults = False
+# Intersphinx: cross-links to external APIs
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", {}),
+    "numpy": ("https://numpy.org/doc/stable/", {}),
+    "xarray": ("https://docs.xarray.dev/en/stable/", {}),
+    "pandas": ("https://pandas.pydata.org/docs/", {}),
+    "matplotlib": ("https://matplotlib.org/stable/", {}),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", {}),
+}
 
-# Google Search Console authentication as extra file to copy into the build directory
-html_extra_path = ["google0b2594d760cfdda3.html"]
+templates_path = ["_templates"]
+exclude_patterns = []
+todo_include_todos = False
 
-# Sort by order specified and not alphabetically
-autodoc_member_order = "bysource"
+# --- HTML output --------------------------------------------------------------
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]
+html_theme_options = {
+    "collapse_navigation": False,
+    "navigation_depth": 4,
+    "sticky_navigation": True,
+    "titles_only": False,
+}
 
-autodoc_mock_imports = [
-    "xarray", "netCDF4", "cartopy", "esmvalcore", "fnmatch", "warnings", "os",  # add others as needed
-]
-
-"""numpydoc_attributes_as_param_list = True
-numpydoc_show_class_members = True
-"""
