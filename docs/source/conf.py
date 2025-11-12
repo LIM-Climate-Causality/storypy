@@ -29,10 +29,10 @@ version = release
 # --- General configuration ----------------------------------------------------
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.autosummary",
 ]
 
 intersphinx_mapping = {
@@ -58,11 +58,10 @@ autosummary_generate = True
 
 # Autodoc defaults (sane, readable API pages)
 autodoc_default_options = {
-    "members": True,            # include class & module members
-    "undoc-members": True,      # show members without docstrings
+    "members": True,
+    "undoc-members": True,
     "show-inheritance": True,
-    "inherited-members": False, # set True if you want base class methods too
-    "member-order": "bysource", # keep your code order
+    "member-order": "bysource",
 }
 
 # Type hints—keep signatures clean but show hints in the description block
@@ -72,7 +71,6 @@ autodoc_typehints_format = "fully-qualified"
 autoclass_content = "both"
 
 # Napoleon (NumPy/Google style) settings
-extensions += ["sphinx.ext.napoleon"]
 napoleon_google_docstring = False   # you’re likely using NumPy style
 napoleon_numpy_docstring = True
 napoleon_use_param = True
@@ -80,15 +78,6 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-# Intersphinx: cross-links to external APIs
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "xarray": ("https://docs.xarray.dev/en/stable/", None),
-    "pandas": ("https://pandas.pydata.org/docs/", None),
-    "matplotlib": ("https://matplotlib.org/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-}
 
 templates_path = ["_templates"]
 exclude_patterns = []
@@ -104,3 +93,16 @@ html_theme_options = {
     "titles_only": False,
 }
 
+def setup(app):
+    import importlib, traceback
+    targets = [
+        "storypy.preprocess._esmval_processor",
+        "storypy.preprocess._netcdf_processor",
+    ]
+    for mod in targets:
+        try:
+            importlib.import_module(mod)
+            print(f"[autodoc] import ok: {mod}")
+        except Exception as e:
+            print(f"[autodoc] IMPORT FAILED: {mod} -> {e}")
+            traceback.print_exc()

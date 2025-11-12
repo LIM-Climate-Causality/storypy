@@ -42,7 +42,7 @@ import warnings
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months, test_mean_significance
-from storypy.evaluate.plot import plot_precipitation_change, plot_function
+# from storypy.evaluate.plot import plot_precipitation_change, plot_function
 from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
 from esmvaltool.diag_scripts.shared._base import _get_input_data_files
 
@@ -366,6 +366,7 @@ class ESMValProcessor:
         return combined_driver_ds
 
     def _plot_spatial(self, combined):
+        from storypy.evaluate.plot import plot_function
         # plot spatial maps for each variable
         for var in self.var_names:
             if self.ensemble_changes[var]:
@@ -389,6 +390,7 @@ class ESMValProcessor:
                     fig.savefig(os.path.join(self.config['plot_dir'], f"beta_forced_{var}_plot.png"))
 
     def _plot_timeseries(self):
+        from storypy.evaluate.plot import plot_precipitation_change
         years = np.arange(1950, 2100)
         for var in self.var_names:
             fig = plot_precipitation_change(
@@ -419,7 +421,7 @@ class ESMValProcessor:
         self._process_data()
         combined = self._combine_and_save()
         self._plot_spatial(combined)
-        return combined
+        return
 
     def process_driver(self):
         """

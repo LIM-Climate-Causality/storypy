@@ -1,28 +1,105 @@
+"""
+storypy.preprocess._netcdf_processor
+====================================
+
+Preprocessing of local CMIP6 NetCDF files without ESMValTool metadata.
+
+This module provides :class:`ModelDataPreprocessor`, a high-level helper to:
+1) discover model/member coverage that’s common across variables,
+2) load and seasonally subset variables and global-warming (tas) fields,
+3) compute climatological changes between two periods,
+4) normalize target variables by the GW change, and
+5) combine and persist ensemble outputs and plots.
+
+Typical workflow
+----------------
+>>> from storypy.preprocess._netcdf_processor import ModelDataPreprocessor
+>>> user_cfg = {
+...     "var_name": ["pr"],
+...     "data_dir": "/path/to/cmip6/",
+...     "work_dir": "./out",
+...     "plot_dir": "./out/plots",
+...     "exp_name": "ssp585",
+...     "freq": "mon",
+...     "grid": "gn",
+...     "region_method": "box",
+...     "box": {"lat_min": -10, "lat_max": 10, "lon_min": 0, "lon_max": 50},
+...     "period1": [1950, 1980],
+...     "period2": [1990, 2020],
+...     "region_id": "Tropical_Africa",
+...     "season": ["DJF"],
+...     "region_extents": [[-10, 10, 0, 50]],
+... }
+>>> proc = ModelDataPreprocessor(user_cfg)
+>>> proc.process_var()     # compute normalized changes for target variables
+>>> proc.process_driver()  # compute driver variables and save per-driver files
+"""
+
 import os
 import warnings
 import fnmatch
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months
-from storypy.evaluate.plot import plot_precipitation_change, plot_function
+# from storypy.evaluate.plot import plot_precipitation_change, plot_function
 
 class ModelDataPreprocessor:
+    """
+    Preprocess locally stored CMIP6 NetCDF files (no ESMValTool metadata).
+
+    This class discovers common model/member coverage across variables,
+    computes climatological changes between two periods, normalizes by a
+    global-warming (tas) change, and writes combined results to NetCDF.
+    Optional “driver” variables can be processed with a separate set of
+    periods/region settings.
+
+    Parameters
+    ----------
+    user_config : dict
+        Main processing configuration. Expected keys include:
+        ``var_name`` (list of str), ``data_dir``, ``work_dir``, ``plot_dir``,
+        ``exp_name``, ``freq``, ``grid``, ``region_method``, ``box``,
+        ``period1``, ``period2``, ``region_id``, ``season``, ``region_extents``.
+    driver_config : dict, optional
+        Optional overrides for driver processing. Keys may include
+        ``var_name``, ``short_name``, ``period1``, ``period2``, ``box``,
+        ``work_dir``, ``season``, ``region_extents``.
+
+    Attributes
+    ----------
+    ensemble_changes : dict[str, list[xr.Dataset]]
+        Per-variable list of normalized climatological change (per model).
+    time_series_changes : dict[str, list[xr.Dataset]]
+        Per-variable list of normalized time-series changes (per model).
+    driver_data : dict[str, list[xr.DataArray]]
+        Per-driver short name, a list of model-wise change arrays.
+
+    Notes
+    -----
+    File layout is assumed to follow a CMIP-like naming pattern inside
+    ``{data_dir}/{variable}/{freq}/{grid}/``. For tas-based GW normalization,
+    corresponding tas files are expected under the tas directory with a
+    consistent naming scheme.
+
+    See Also
+    --------
+    storypy.preprocess._esmval_processor.ESMValProcessor
+        Alternative processor that uses ESMValTool metadata instead of local discovery.
+    """
+
     def __init__(self, user_config, driver_config=None):
         """
-        Initialize processor for direct CMIP6 data processing without esmvaltool metadata.
+        Initialize the preprocessor and unpack configuration.
 
-        driver_config usage:
-        - pass a dict with keys to customize remote‐driver computation separately from main processing.
-        - Supported keys:
-          * 'var_name': list of variables to compute drivers for (defaults to user_config['var_name']).
-          * 'box': spatial bounding box dict with lat_min, lat_max, lon_min, lon_max (defaults to main box).
-          * 'work_dir': path to directory where driver .nc outputs will be saved (defaults to main work_dir).
-        - Any key not provided falls back to the corresponding setting in user_config.
+        Sets internal attributes, expands region bounding box,
+        and prepares storage containers.
 
-        Parameters:
-        - user_config: dict for main processing (variables, periods, region, directories).
-        - driver_config: optional dict for remote‐driver computation; keys can override
-          var_name, box, work_dir (for driver outputs), etc.
+        Parameters
+        ----------
+        user_config : dict
+            User-defined processing options.
+        driver_config : dict, optional
+            Overrides for driver variable settings..
         """
         # main configuration
         self.uc = user_config
@@ -63,6 +140,12 @@ class ModelDataPreprocessor:
         self.driver_data = {var: [] for var in self.driver_vars}
 
     def _compute_bounding_box(self):
+        """
+        Compute and slightly expand the user-defined region bounding box.
+
+        Expands by ±5° and clips to the valid latitude/longitude range.
+        Updates ``self.uc['box']`` in place.
+        """
         ext = self.uc['region_extents']
         lat_min = min(r[0] for r in ext)
         lat_max = max(r[1] for r in ext)
@@ -76,6 +159,19 @@ class ModelDataPreprocessor:
         }
     
     def _find_common_models(self):
+        """
+        Discover models/members available for **all** target variables.
+
+        Scans each variable directory under
+        ``{data_dir}/{var}/{freq}/{grid}/`` and extracts model+member
+        identifiers from filenames. Returns the list of model names that
+        are common to every variable in ``self.var_names``.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of common model identifiers (without member suffix).
+        """
         model_sets = {}
         for var in self.var_names:
             path = os.path.join(self.data_dir, var, self.freq, self.grid)
@@ -97,6 +193,24 @@ class ModelDataPreprocessor:
         return []
     
     def _process_var(self, var, common_models):
+        """
+        Process a single target variable for all common models.
+
+        For each model, this:
+        1) loads historical + scenario ensembles,
+        2) builds a continuous time series (hist + scen),
+        3) seasonally subsets and converts units (mm/day for ``pr``),
+        4) computes climatological change between periods,
+        5) normalizes by the tas-based global-warming change, and
+        6) stores normalized change/time series for later combination.
+
+        Parameters
+        ----------
+        var : str
+            Target variable short name (e.g., ``"pr"``).
+        common_models : list[str]
+            List of model identifiers returned by :meth:`_find_common_models`.
+        """
         path = os.path.join(self.data_dir, var, self.freq, self.grid)
         files = os.listdir(path)
 
@@ -191,6 +305,21 @@ class ModelDataPreprocessor:
                 print(f"KeyError: {e}. Skipping variable {var}.")
             
     def _process_driver_var(self, variable_name, common_models):
+        """
+        Process a single **driver** variable for all common models.
+
+        Loads historical + scenario ensembles for ``variable_name``,
+        computes seasonal means, converts units where needed, and
+        calculates the period-to-period change. Results are stored in
+        :attr:`driver_data` under the driver short name.
+
+        Parameters
+        ----------
+        variable_name : str
+            Driver variable to process (e.g., ``"sst"`` or ``"uas"``).
+        common_models : list[str]
+            Models returned by :meth:`_find_common_models`.
+        """
         path = os.path.join(self.data_dir, variable_name, self.freq, self.grid)
         files = os.listdir(path)
 
@@ -252,6 +381,17 @@ class ModelDataPreprocessor:
                 self.driver_data[short_name].append(da)
     
     def _combine_and_save(self):
+        """
+        Combine normalized changes across models and write a NetCDF file.
+
+        Creates a dataset with one variable per target in :attr:`var_names`,
+        indexed by the ``model`` dimension.
+
+        Returns
+        -------
+        xarray.Dataset
+            Combined dataset of normalized changes (written to ``target.nc``).
+        """
         combined = xr.Dataset()
 
         for var in self.var_names:
@@ -285,7 +425,12 @@ class ModelDataPreprocessor:
 
     
     def _combine_and_save_drivers(self):
-        # combine and write driver data
+        """
+        Combine driver variables across models and write per-driver NetCDF files.
+
+        For each driver short name, saves a dataset containing the model
+        stack and its ensemble mean under ``{driver_work_dir}/remote_driver_{short}.nc``.
+        """
         os.makedirs(self.driver_work_dir, exist_ok=True)
         for var in self.driver_short_names:
             if self.driver_data[var]:
@@ -300,6 +445,13 @@ class ModelDataPreprocessor:
                 print(f"Saved remote driver output for {var} to {outpath}")
     
     def _plot_timeseries(self):
+        from storypy.evaluate.plot import plot_precipitation_change
+        """
+        Plot normalized time-series for each target variable.
+
+        Saves figures to ``plot_dir`` if a plot is produced by the
+        configured plotting function.
+        """
         yrs = np.arange(1950, 2100)
         for var in self.var_names:
             fig = plot_precipitation_change(
@@ -314,6 +466,14 @@ class ModelDataPreprocessor:
 
     # # main change processing
     def process_var(self):
+        """
+        Main entry point for target variables.
+
+        Finds common models, processes each variable across those models,
+        combines outputs to a single dataset (``target.nc``), and writes
+        time-series plots. This method does not return; see
+        :meth:`_combine_and_save` for the written dataset.
+        """
         self.common_models = self._find_common_models()
         for var in self.var_names:
             path = os.path.join(self.data_dir, var, self.freq, self.grid)
@@ -326,6 +486,12 @@ class ModelDataPreprocessor:
 
     # driver processing
     def process_driver(self):
+        """
+        Main entry point for driver variables.
+
+        Finds common models, processes each driver across those models,
+        and writes per-driver NetCDF files via :meth:`_combine_and_save_drivers`.
+        """
         common = self._find_common_models()
         for var in self.driver_vars:
             self._process_driver_var(var, common)

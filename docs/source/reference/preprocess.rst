@@ -9,32 +9,25 @@
    <br /> <br />
 
 
-storypy.preprocess module
-==========================
-
-.. automodule:: storypy.preprocess
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ESMValTool Preprocessing
-------------------------
+========================
 
 .. currentmodule:: storypy.preprocess._esmval_processor
+
+.. autofunction:: parse_config
 
 .. autoclass:: ESMValProcessor
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autofunction:: parse_config
 
-Modeldata Preprocessing
------------------------
+ModelData Preprocessing
+=======================
 
 .. currentmodule:: storypy.preprocess._netcdf_processor
 
-.. autoclass:: NetCDFProcessor
+.. autoclass:: ModelDataPreprocessor
    :members:
    :undoc-members:
    :show-inheritance:
