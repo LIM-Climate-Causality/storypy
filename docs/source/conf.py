@@ -51,6 +51,7 @@ autodoc_mock_imports = [
     "dask", "cfgrib", "cftime", "zarr", "eccodes",
     "numpy", "pandas", "scipy", "sklearn",
     "matplotlib", "xesmf", "yaml", "pooch",
+    "statsmodels",
 ]
 
 # Generate autosummary stub pages for modules/classes/functions

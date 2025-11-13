@@ -6,13 +6,13 @@ import glob
 
 from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
 
-def stand_numpy(dato):
+def stand_numpy(data):
     """
     Standardize values (z-score) along the given array axis.
 
     Parameters
     ----------
-    dato : ndarray
+    data : ndarray
         Array of values to standardize.
 
     Returns
@@ -25,7 +25,7 @@ def stand_numpy(dato):
     This helper is applied column-wise to data frames produced by
     :func:`compute_drivers_from_netcdf`.
     """
-    anom = (dato - np.mean(dato)) / np.std(dato)
+    anom = (data - np.mean(data)) / np.std(data)
     return anom
 
 def stand_pandas(series: pd.Series) -> pd.Series:

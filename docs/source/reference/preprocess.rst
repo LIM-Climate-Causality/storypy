@@ -9,7 +9,7 @@
    <br /> <br />
 
 
-storypy.compute module
+storypy.preprocess module
 ======================
 
 ESMValTool Preprocessing

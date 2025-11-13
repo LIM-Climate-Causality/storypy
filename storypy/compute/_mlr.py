@@ -32,7 +32,7 @@ Example
 ['./output/regression_output/pr/regression_coefficients.nc', ...]
 """
 
-from ._regres import spatial_MLR
+# from ._regres import spatial_MLR
 from storypy.utils import xr, pd
 import os
 
@@ -95,6 +95,7 @@ import os
 
 
 def run_regression(config: dict) -> list[str]:
+    from ._regres import spatial_MLR
     """
     Run spatial multiple linear regression (MLR) for a single target variable.
 

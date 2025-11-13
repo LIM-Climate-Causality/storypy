@@ -407,7 +407,7 @@ class ESMValProcessor:
         This method loops through all datasets and variables defined in
         ``user_config``, computes ensemble-mean climatological changes
         between the two defined time periods, saves the results as
-        NetCDF, and generates spatial plots.
+        NetCDF.
 
         Returns
         -------
