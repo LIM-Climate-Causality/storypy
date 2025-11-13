@@ -61,7 +61,6 @@ This section provides the technical documentation for **storypy**, including all
    :maxdepth: 2
    :caption: API Reference
 
-   reference/api
    reference/preprocess
    reference/compute
    reference/evaluate
