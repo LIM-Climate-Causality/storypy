@@ -52,14 +52,14 @@ Each notebook is hosted on **nbviewer** and linked directly.
 
 ---
 
-Documentation
+API Reference
 =============
 
 This section provides the technical documentation for **storypy**, including all modules, classes, and functions.
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
+   :caption: Documentation
 
    reference/preprocess
    reference/compute
