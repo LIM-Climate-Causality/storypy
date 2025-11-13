@@ -9,8 +9,11 @@
    <br /> <br />
 
 
+storypy.compute module
+======================
+
 ESMValTool Preprocessing
-========================
+------------------------
 
 .. currentmodule:: storypy.preprocess._esmval_processor
 
@@ -21,7 +24,7 @@ ESMValTool Preprocessing
 
 
 ModelData Preprocessing
-=======================
+-----------------------
 
 .. currentmodule:: storypy.preprocess._netcdf_processor
 

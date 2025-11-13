@@ -8,13 +8,41 @@ from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
 
 def stand_numpy(dato):
     """
-    Standardize the data (z-score normalization)
+    Standardize values (z-score) along the given array axis.
+
+    Parameters
+    ----------
+    dato : ndarray
+        Array of values to standardize.
+
+    Returns
+    -------
+    ndarray
+        Standardized array: ``(x - mean) / std`` computed with population std (ddof=0).
+
+    Notes
+    -----
+    This helper is applied column-wise to data frames produced by
+    :func:`compute_drivers_from_netcdf`.
     """
     anom = (dato - np.mean(dato)) / np.std(dato)
     return anom
 
 def stand_pandas(series: pd.Series) -> pd.Series:
-    """Standardize across models (z-score)."""
+    """
+    Standardize a pandas Series across models (z-score).
+
+    Parameters
+    ----------
+    series : pandas.Series
+        Values (typically one driver across models).
+
+    Returns
+    -------
+    pandas.Series
+        Standardized series. If the standard deviation is 0 or NaN,
+        the function returns all-NaN (avoids divide-by-zero).
+    """
     std = series.std(ddof=0)
     if std == 0 or np.isnan(std):
         return (series - series.mean()) * np.nan
@@ -22,14 +50,49 @@ def stand_pandas(series: pd.Series) -> pd.Series:
 
 def compute_drivers_from_netcdf(driver_config):
     """
-    Compute driver values from preprocessed NetCDF files stored in driver_config['work_dir'].
+    Build driver regressors from preprocessed NetCDF files.
 
-    The function handles both variable extraction and global warming scaling.
+    This function scans ``driver_config['work_dir']`` for driver NetCDF
+    files (one per driver), extracts model-wise scalar values, scales them
+    by a global-warming index ``gw`` (read from ``driver_gw.nc``), and
+    returns three data frames (raw, scaled, standardized). CSV files are
+    also written to ``{work_dir}/remote_drivers/``.
 
-    driver_config:
-        var_name: list of variable names in NetCDF
-        short_name: list of output variable names for regression/CSV
-        work_dir: path where NetCDF files are stored
+    Parameters
+    ----------
+    driver_config : dict
+        Configuration for reading drivers. Keys:
+        - ``work_dir`` (str): directory with driver NetCDFs.
+        - ``var_name`` (list[str]): variable names present in NetCDF files.
+        - ``short_name`` (list[str], optional): output names used for
+          regressors; defaults to ``var_name``.
+
+    Returns
+    -------
+    (pandas.DataFrame, pandas.DataFrame, pandas.DataFrame)
+        Tuple ``(df_raw, df_scaled, df_standardized)`` with models as index
+        and driver names as columns.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no driver NetCDF files are found or the GW file is missing.
+    ValueError
+        If lengths of ``var_name`` and ``short_name`` mismatch or the GW
+        dataset lacks required variables/coords.
+
+    Notes
+    -----
+    * The global-warming file must be named ``driver_gw.nc`` and contain a
+      variable ``gw`` with a ``model`` coordinate.
+    * Standardization uses :func:`stand_numpy` column-wise.
+
+    Examples
+    --------
+    >>> cfg = {"work_dir": "./out", "var_name": ["sst", "uas"], "short_name": ["SST", "UAS"]}
+    >>> raw, scaled, std = compute_drivers_from_netcdf(cfg)
+    >>> list(raw.columns)
+    ['SST', 'UAS']
     """
     work_dir = driver_config['work_dir']
     var_names = driver_config['var_name']
@@ -141,8 +204,25 @@ EXCLUDE_VARS = {"u850", "tas", "sst", "psl", "pr", "pr_djf", "pr_jja", "u850_djf
 
 
 def _select_one_file_per_var(dataset_list, dataset_name, var_group):
-    """Pick exactly one entry for a (dataset, variable_group).
-    Prefer esmvaltool's alias == 'EnsembleMean'; otherwise first match.
+    """
+    Select one entry for a dataset/variable group.
+
+    Preference is given to entries with ``alias == 'EnsembleMean'``.
+    Falls back to the first matching entry if no ensemble mean is present.
+
+    Parameters
+    ----------
+    dataset_list : list[dict]
+        Metadata entries from ESMValTool.
+    dataset_name : str
+        Dataset identifier.
+    var_group : str
+        Variable group name.
+
+    Returns
+    -------
+    dict or None
+        The selected metadata record or ``None`` if not found.
     """
     for m in dataset_list:
         if (
@@ -158,7 +238,28 @@ def _select_one_file_per_var(dataset_list, dataset_name, var_group):
 
 
 def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
-    """Return (rd_list, models) and persist a NetCDF with one scalar per model/driver."""
+    """
+    Collect one scalar per model/driver from ESMValTool metadata.
+
+    Reads files pointed to by ``meta`` (grouped by dataset), computes a
+    time-mean (if necessary), and builds a list of dictionaries (one per
+    model) containing driver values. Writes a convenience NetCDF with a
+    ``model`` dimension to ``{work_dir}/remote_drivers/drivers.nc``.
+
+    Parameters
+    ----------
+    meta : dict
+        Metadata grouped by dataset (from :func:`esmvaltool.diag_scripts.shared.group_metadata`).
+    work_dir : str
+        Output directory used to persist the NetCDF.
+    exclude_vars : set[str], optional
+        Driver names to ignore. Defaults to :data:`EXCLUDE_VARS`.
+
+    Returns
+    -------
+    (list[dict], list[str])
+        Tuple ``(rd_list, models)`` where each dict maps driver name -> value.
+    """
     rd_list = []
     models = []
 
@@ -199,6 +300,21 @@ def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
 
 
 def _build_drivers_dataset(rd_list, models):
+    """
+    Assemble a dataset with one variable per driver and a ``model`` dimension.
+
+    Parameters
+    ----------
+    rd_list : list[dict]
+        One dict per model with driver -> value mappings.
+    models : list[str]
+        Model names aligned with ``rd_list``.
+
+    Returns
+    -------
+    xarray.Dataset
+        Dataset with variables named after drivers and a ``model`` coordinate.
+    """
     all_vars = sorted(set().union(*[d.keys() for d in rd_list]))
     data_vars = {}
     for var in all_vars:
@@ -208,6 +324,36 @@ def _build_drivers_dataset(rd_list, models):
 
 
 def driver_indices(config):
+    """
+    Compute driver indices from ESMValTool metadata and write CSV files.
+
+    Uses the ``input_data`` structure from an ESMValTool configuration
+    to collect scalar driver values by dataset, scales them by ``gw``,
+    standardizes across models, and writes:
+
+    * ``scaled_standardized_drivers.csv``
+    * ``drivers.csv`` (raw)
+    * ``scaled_drivers.csv`` (scaled by ``gw``)
+
+    Files are written under ``{work_dir}/remote_drivers/``.
+
+    Parameters
+    ----------
+    config : dict
+        ESMValTool run configuration. Must contain:
+        - ``input_data``: mapping of variable metadata.
+        - ``work_dir``: output directory.
+
+    Returns
+    -------
+    None
+        Results are written to disk.
+
+    See Also
+    --------
+    compute_drivers_from_netcdf
+        Alternative pathway that reads drivers directly from preprocessed NetCDF files.
+    """
     meta = group_metadata(config["input_data"].values(), "dataset")
 
     rd_list, models = _collect_scalar_drivers(meta, config["work_dir"])

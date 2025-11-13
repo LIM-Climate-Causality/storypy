@@ -1,3 +1,37 @@
+"""
+storypy.compute._mlr
+====================
+
+High-level interface for running spatial multiple linear regression (MLR).
+
+This module provides :func:`run_regression`, which ties together:
+
+* target fields from a NetCDF file (``target_<var>.nc``), and
+* standardized remote drivers from a CSV file
+  (``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``),
+
+and runs a spatial MLR via :class:`storypy.compute._regres.spatial_MLR`.
+
+Typical workflow
+----------------
+1. Prepare targets with :class:`storypy.preprocess.ESMValProcessor` or
+   :class:`storypy.preprocess.ModelDataPreprocessor`.
+2. Prepare standardized driver indices with
+   :func:`storypy.compute._compute_driver.compute_drivers_from_netcdf`.
+3. Call :func:`run_regression` with an ESMValTool-like ``config`` dict.
+
+Example
+-------
+>>> from storypy.compute._mlr import run_regression
+>>> config = {
+...     "work_dir": "./output",
+...     "target_variable": ["pr"],
+... }
+>>> files = run_regression(config)
+>>> files  # doctest: +SKIP
+['./output/regression_output/pr/regression_coefficients.nc', ...]
+"""
+
 from ._regres import spatial_MLR
 from storypy.utils import xr, pd
 import os
@@ -62,16 +96,58 @@ import os
 
 def run_regression(config: dict) -> list[str]:
     """
-    Run spatial multiple linear regression (MLR) for a single target variable using NetCDF and CSV data.
+    Run spatial multiple linear regression (MLR) for a single target variable.
 
-    Parameters:
-        config (dict): Must contain 'work_dir' and a single-element list in 'target_variable'.
+    This function loads a target field from ``target_<var>.nc``, aligns it
+    with standardized driver indices from
+    ``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``,
+    and performs a spatial MLR at each gridpoint using
+    :class:`storypy.compute._regres.spatial_MLR`.
 
-    Returns:
-        list of str: Paths to the regression output files.
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary. Must contain:
+
+        - ``"work_dir"`` (str): base directory containing the target and
+          driver files.
+        - ``"target_variable"`` (list[str]): list with **exactly one**
+          variable name ``var``. The corresponding NetCDF file
+          ``target_<var>.nc`` must exist in ``work_dir``.
+
+    Returns
+    -------
+    list of str
+        List containing the path to the regression output file(s).
+        Currently this is a single NetCDF file with regression diagnostics
+        for the specified variable.
+
+    Raises
+    ------
+    ValueError
+        If zero or more than one target variable is provided, if the
+        variable is missing in the NetCDF file, or if no models are
+        shared between the NetCDF and CSV inputs.
+    FileNotFoundError
+        If the expected target or driver files are missing.
+
+    Notes
+    -----
+    * The driver CSV is expected at::
+
+          <work_dir>/storyline_analysis/multiple_regresion/remote_drivers/
+              scaled_standardized_drivers.csv
+
+    * The regression is fit across the ``model`` dimension.
+
+    Examples
+    --------
+    >>> cfg = {"work_dir": "./output", "target_variable": ["pr"]}
+    >>> output_files = run_regression(cfg)  # doctest: +SKIP
+    >>> output_files[0].endswith(".nc")
+    True
     """
 
-    # Validate config
     target_vars = config.get("target_variable", [])
     if not target_vars or len(target_vars) != 1:
         raise ValueError("Exactly one target variable must be specified in config['target_variable'].")

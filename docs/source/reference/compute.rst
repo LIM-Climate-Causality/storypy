@@ -9,77 +9,43 @@
    <br /> <br />
 
 
-ibicus.debias module
-===========================
+storypy.compute module
+======================
 
-.. automodule:: ibicus.debias
-   :members:
-   :undoc-members:
+Driver preparation
+------------------
+
+.. currentmodule:: storypy.compute._compute_driver
+
+.. automodule:: storypy.compute._compute_driver
+   :members: compute_drivers_from_netcdf, driver_indices, stand_numpy, stand_pandas
    :show-inheritance:
 
-----
+.. note::
 
-ibicus.debias Debiaser abstract-class
---------------------------------------------
-
-.. autoclass:: Debiaser
-	:members: from_variable, apply, apply_location
-
-ibicus.debias RunningWindowDebiaser abstract-class
---------------------------------------------
-
-.. autoclass:: RunningWindowDebiaser
-	:members: from_variable, apply, apply_on_window
-
-ibicus.debias LinearScaling class
-----------------------------------------
-
-.. autoclass:: LinearScaling
-	:members: from_variable, apply
-
-ibicus.debias DeltaChange class
---------------------------------------
-
-.. autoclass:: DeltaChange
-	:members: from_variable, apply
+   Additional internal helpers (e.g. ``_collect_scalar_drivers``) are used
+   internally for file selection and dataset assembly and are not part of
+   the public API.
 
 
-ibicus.debias QuantileMapping class
-------------------------------------------
+Multiple linear regression
+--------------------------
 
-.. autoclass:: QuantileMapping
-	:members: from_variable, for_precipitation, apply
+.. currentmodule:: storypy.compute._mlr
 
-
-ibicus.debias ScaledDistributionMapping class
-----------------------------------------------------
-
-.. autoclass:: ScaledDistributionMapping
-	:members: from_variable, apply
+.. autofunction:: run_regression
 
 
-ibicus.debias CDFt class
--------------------------------
+Regression core utilities
+-------------------------
 
-.. autoclass:: CDFt
-	:members: from_variable, apply
+.. currentmodule:: storypy.compute._regres
+
+.. autoclass:: spatial_MLR
+   :members: regression_data, linear_regression, linear_regression_pvalues,
+             linear_regression_R2, perform_regression,
+             open_regression_coef, open_lmg_coef,
+             plot_regression_coef_map, plot_regression_lmg_map
+   :show-inheritance:
 
 
-ibicus.debias ECDFM class
---------------------------------
-
-.. autoclass:: ECDFM
-	:members: from_variable, for_precipitation, apply
-
-
-ibicus.debias QuantileDeltaMapping class
------------------------------------------------
-
-.. autoclass:: QuantileDeltaMapping
-	:members: from_variable, for_precipitation, apply
-
-ibicus.debias ISIMIP class
----------------------------------
-
-.. autoclass:: ISIMIP
-	:members: from_variable, apply, step1, step2, step3, step4, step5, step6, step7, step8

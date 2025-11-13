@@ -1,3 +1,19 @@
+"""
+storypy.compute._regres
+=======================
+
+Low-level utilities for spatial multiple linear regression (MLR).
+
+The :class:`spatial_MLR` class wraps a statsmodels OLS regression
+fitted at each gridpoint of a target xarray object, using model-wise
+driver indices as predictors. Additional helpers support detrending,
+standardisation, and diagnostic plotting.
+
+This module is typically not used directly by end users; instead they
+call :func:`storypy.compute._mlr.run_regression`, which drives the
+workflow and uses :class:`spatial_MLR` internally.
+"""
+
 import xarray as xr
 import numpy as np
 import statsmodels.api as sm
@@ -17,15 +33,57 @@ import matplotlib as mpl
 import random
 
 class spatial_MLR(object):
+    """
+    Spatial multiple linear regression over model ensembles.
+
+    The class prepares regression matrices from a set of driver indices
+    and a target DataArray with a ``model`` dimension, then performs an
+    OLS fit at each gridpoint using :mod:`statsmodels`.
+
+    Typical usage
+    -------------
+    >>> from storypy.compute._regres import spatial_MLR
+    >>> MLR = spatial_MLR()
+    >>> MLR.regression_data(target, regressors, regressor_names)
+    >>> MLR.perform_regression("./out", "pr")  # doctest: +SKIP
+
+    Attributes
+    ----------
+    target : xarray.DataArray
+        Target field for the regression (with ``model`` dimension).
+    regression_y : ndarray
+        Design matrix used for OLS (constant + regressors).
+    regressors : ndarray
+        Raw regressor values.
+    rd_num : int
+        Number of regressors including the constant term.
+    regressor_names : list-like
+        Names of the constant and driver regressors.
+    """
     def __init__(self):
         self.what_is_this = 'This performs a regression across models and plots everything'
     
     def regression_data(self,variable,regressors,regressor_names):
-        """Define the regression target variable 
-        this is here to be edited if some opperation is needed on the DataArray
-        
-        :param variable: DataArray
-        :return: target variable for the regression  
+        """
+        Configure target and regressor matrices for the regression.
+
+        Parameters
+        ----------
+        variable : xarray.DataArray or None
+            Target variable with a ``model`` dimension (e.g. model-wise
+            normalized precipitation change). If ``None``, only the
+            regressors are stored (useful for quick checks).
+        regressors : pandas.DataFrame
+            Model-wise driver indices. Each row corresponds to a model,
+            columns to individual regressors.
+        regressor_names : sequence of str
+            Names of the regressors. The first entry is typically the
+            regression intercept (e.g. ``"MEM"`` for multi-model mean).
+
+        Notes
+        -----
+        The design matrix ``regression_y`` is created by calling
+        :func:`statsmodels.api.add_constant` on the regressor values.
         """
         self.target = variable
         regressor_indices = regressors
@@ -36,23 +94,82 @@ class spatial_MLR(object):
 
     #Regresion lineal
     def linear_regression(self,x):
+        """
+        Fit an OLS regression for a single gridpoint.
+
+        Parameters
+        ----------
+        x : array-like
+            Target values over models for one gridpoint.
+
+        Returns
+        -------
+        tuple
+            Regression coefficients (one per regressor).
+        """
         y = self.regression_y
         res = sm.OLS(x,y).fit()
         returns = [res.params[i] for i in range(self.rd_num)]
         return tuple(returns)
 
     def linear_regression_pvalues(self,x):
+        """
+        Compute p-values for each regressor at a single gridpoint.
+
+        Parameters
+        ----------
+        x : array-like
+            Target values over models.
+
+        Returns
+        -------
+        tuple
+            p-values associated with each regression coefficient.
+        """
         y = self.regression_y
         res = sm.OLS(x,y).fit()
         returns = [res.pvalues[i] for i in range(self.rd_num)]
         return tuple(returns)
     
     def linear_regression_R2(self,x):
+        """
+        Compute the coefficient of determination (R²) for a gridpoint.
+
+        Parameters
+        ----------
+        x : array-like
+            Target values over models.
+
+        Returns
+        -------
+        float
+            R² for the OLS fit.
+        """
         y = self.regression_y
         res = sm.OLS(x,y).fit()
         return res.rsquared
     
     def linear_regression_relative_importance(self,x):
+        """
+        Compute relative importance of regressors (LMG-like metric).
+
+        Notes
+        -----
+        This method assumes an R interface is available via
+        ``robjects.globalenv['rel_importance']``. If that call fails,
+        a vector of zeros is returned.
+
+        Parameters
+        ----------
+        x : array-like
+            Target values over models.
+
+        Returns
+        -------
+        tuple
+            Relative importance values for each regressor (excluding
+            the constant term).
+        """
         y = self.regressors
         try:
             res = robjects.globalenv['rel_importance'](x,y)
@@ -72,12 +189,31 @@ class spatial_MLR(object):
 
 
     def perform_regression(self,path,var): 
-        """ Performs regression over all gridpoints in a map and returns and saves DataFrames
-        
-        :param path: saving path
-        :return: none
         """
-        
+        Perform spatial regression over all gridpoints and save diagnostics.
+
+        The regression is run independently at each gridpoint using
+        :meth:`linear_regression`, :meth:`linear_regression_pvalues`,
+        :meth:`linear_regression_R2`, and
+        :meth:`linear_regression_relative_importance`. The resulting
+        coefficients, p-values, relative importance and R² fields are
+        written to NetCDF files under::
+
+            <path>/<var>/
+
+        Parameters
+        ----------
+        path : str
+            Base directory for writing NetCDF outputs.
+        var : str
+            Name of the target variable (used in filenames and some
+            variable renaming logic).
+
+        Returns
+        -------
+        None
+            Results are written to disk.
+        """
         target_var = xr.apply_ufunc(replace_nans_with_zero, self.target)
         results = xr.apply_ufunc(self.linear_regression,target_var,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num)],
@@ -168,11 +304,21 @@ class spatial_MLR(object):
      
     
     def open_regression_coef(self,path,var):
-        """ Open regression coefficients and pvalues to plot
-        :param path: saving path
-        :return maps: list of list of coefficient maps
-        :return maps_pval:  list of coefficient pvalues maps
-        :return R2: map of fraction of variance
+        """
+        Open saved regression coefficient and p-value maps.
+
+        Parameters
+        ----------
+        path : str
+            Base output path passed to :meth:`perform_regression`.
+        var : str
+            Target variable name.
+
+        Returns
+        -------
+        (list[xarray.DataArray], list[xarray.DataArray], xarray.Dataset)
+            Tuple ``(maps, maps_pval, R2)`` with coefficient maps,
+            p-value maps, and R² dataset.
         """ 
         maps = []; maps_pval = []
         coef_maps = xr.open_dataset(path+'/'+var+'/regression_coefficients.nc')
@@ -183,11 +329,21 @@ class spatial_MLR(object):
         return maps, maps_pval, R2    
 
     def open_lmg_coef(self,path,var):
-        """ Open regression coefficients and pvalues to plot
-        :param path: saving path
-        :return maps: list of list of coefficient maps
-        :return maps_pval:  list of coefficient pvalues maps
-        :return R2: map of fraction of variance
+        """
+        Open relative-importance regression maps.
+
+        Parameters
+        ----------
+        path : str
+            Base output path passed to :meth:`perform_regression`.
+        var : str
+            Target variable name.
+
+        Returns
+        -------
+        (list[xarray.DataArray], list[xarray.DataArray], xarray.Dataset)
+            Tuple ``(maps, maps_pval, R2)`` for LMG-style importance and
+            the associated R² dataset.
         """ 
         maps = []; maps_pval = []
         coef_maps = xr.open_dataset(path+'/'+var+'/regression_coefficients_relative_importance.nc')
@@ -198,10 +354,22 @@ class spatial_MLR(object):
         return maps, maps_pval, R2    
     
     def plot_regression_lmg_map(self,path,var,output_path):
-        """ Plots figure with all of 
-        :param regressor_names: list with strings naming the independent variables
-        :param path: saving path
-        :return: none
+        """
+        Plot relative-importance maps for each regressor.
+
+        Parameters
+        ----------
+        path : str
+            Base path used when saving regression outputs.
+        var : str
+            Target variable name.
+        output_path : str
+            Directory where the figure will be saved.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Generated figure instance.
         """
         maps, maps_pval, R2 = self.open_lmg_coef(path,var)
         cmapU850 = mpl.colors.ListedColormap(['darkblue','navy','steelblue','lightblue',
@@ -277,10 +445,22 @@ class spatial_MLR(object):
 
 
     def plot_regression_coef_map(self,path,var,output_path):
-        """ Plots figure with all of 
-        :param regressor_names: list with strings naming the independent variables
-        :param path: saving path
-        :return: none
+        """
+        Plot regression coefficient maps with significance hatching.
+
+        Parameters
+        ----------
+        path : str
+            Base path used when saving regression outputs.
+        var : str
+            Target variable name.
+        output_path : str
+            Directory where the figure will be saved.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Generated figure instance.
         """
         maps, maps_pval, R2 = self.open_regression_coef(path,var)
         cmapU850 = mpl.colors.ListedColormap(['darkblue','navy','steelblue','lightblue',
