@@ -99,6 +99,9 @@ def setup(app):
     targets = [
         "storypy.preprocess._esmval_processor",
         "storypy.preprocess._netcdf_processor",
+        "storypy.compute._compute_driver",
+        "storypy.compute._mlr",
+        "storypy.compute._regres",
     ]
     for mod in targets:
         try:
@@ -107,3 +110,4 @@ def setup(app):
         except Exception as e:
             print(f"[autodoc] IMPORT FAILED: {mod} -> {e}")
             traceback.print_exc()
+
