@@ -40,7 +40,7 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers (C_x).
+- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers ($C_x$).
 
 We designed two options for processing CMIP data:
 
@@ -65,13 +65,14 @@ We designed two options for processing CMIP data:
     >>> │   └── ...
     >>> └── ...
 
-Given climate model data: during a reference period (``cm_hist``) and future / application period (``cm_future``) as well as observations or reanalysis data during the reference period (``obs``), ibicus provides a standardized user-interface for initializing and applying a bias adjustment method, for example ISIMIP:
+Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, user can preprocess the data by calling the methods and using the following steps for example:
 
 >>> from storypy.preprocess import ESMValProcessor, ModelDataPreprocessor, parse_config
->>> processor_target = ESMValProcessor(esmval_config, user_config)
+>>> processor_target = ESMValProcessor(esmval_config, user_config, driver_config)
 OR
->>> processor_target = ModelDataPreprocessor(user_config)
+>>> processor_target = ModelDataPreprocessor(user_config, driver_config)
 >>> processor_target.process_var()
+>>> processor_target.process_driver()
 
 The methods currently implemented in ibicus include:
 

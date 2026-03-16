@@ -59,7 +59,7 @@ This section provides the technical documentation for **storypy**, including all
 
 .. toctree::
    :maxdepth: 2
-   :caption: Documentation
+   :caption: API Reference
 
    reference/preprocess
    reference/compute
