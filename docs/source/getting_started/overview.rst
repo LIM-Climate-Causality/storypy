@@ -13,29 +13,30 @@
 Overview
 ========
 
+** StoryPy aim to facilitate analyzing dynamical storylines by providing efficient and user-friendly tools that is flexible and adaptable for various storyline research and policy applications..**
 
-**ibicus provides a flexible and user-friendly toolkit for the bias adjustment of climate models and associated evaluation.**
+Representing model uncertainty may be relevant for a lot of applications, yet the analysis is not trivial and requires a lot of data processing and expert knowledge. This tool can help bring together experts with stakeholders to understand uncertainty at the regional scale with the technical part not being an issue, leaving more time for science, interpretation and communication.
 
-ibicus currently implements eight state of the art methods for bias adjustment published in peer-reviewed literature, including ISIMIP (Lange 2019) and CDFt (Michelangeli et al. 2009). The package enables the user to modify and refine their settings and parameters, and provides an evaluation framework to assess marginal, temporal, spatial, and multivariate properties as well as a range of climate indices of the bias adjusted climate model.
 
-You can find an introduction-video to ibicus `here <https://www.youtube.com/watch?v=n8QlGLU2gIo>`_.
+What are storylines?
+--------------------
 
-What is bias adjustment?
-------------------------
+The uncertainty in the response of the climate system to anthropogenic forcing is large, at regional scales, this uncertainty is associated with uncertain atmospheric circulation, such as the position of the storm track, the frequency of weather regimes, or the change in ENSO-driven teleconnections.
 
-Even though climate models have gained impressive skill over the recent years, simulations of both global and regional climate models still exhibit biases. This means that there are systematic discrepancies between statistics of the model output and observational distribution. These discrepancies in the two distributions become especially relevant when using the output of climate models for local impact studies that often require focus on specific threshold metrics such as dry days.
+Dynamical storylines explore plausible changes in regional climate driven by qualitatively different -yet plausible- forced responses in large-scale remote drivers, such as Arctic Amplification, tropical amplification, and the stratospheric polar vortex. In this way, storylines use physical understanding to link large-scale thermodynamic and dynamic climate responses to regional impacts and present a small set of projections in a conditional way.
 
-Biases could be due to unresolved topography, the parametrization of processes such as convection occurring below grid-cell level, or the misplacement of large-scale atmospheric patterns. Bias adjustment cannot fundamentally address these issues. Rather, bias adjustment calibrates a statistical transfer function between simulated and observed distributional parameters in order to improve (“bias adjust”) the climate model. While bias adjustment can reduce the location-wise bias of the climate model in many cases, the approach is also prone to misuse and can introduce changes in the spatial, temporal and multivariate structure of the climate model as well as the climate change trend. Nevertheless, bias adjustment has de-facto become a standard pre-processing step in climate impact studies.
+It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of GCMs contributing to the Coupled Model Intercomparison Project (CMIP). This approach helps address uncertainties in regional climate responses by
 
-For a more detailed introduction, as well as an overview of relevant literature on existing methods and issues, we refer to our paper published in Geoscientific Model Development:
+- The multimodel mean and the treatment of the large uncertainty around it in probabilistic terms is often not really meaningful for decision-making.
 
-How to cite: Spuler, F. R., Wessel, J. B., Comyn-Platt, E., Varndell, J., and Cagnazzo, C.: ibicus: a new open-source Python package and comprehensive interface for statistical bias adjustment and evaluation in climate modelling (v1.0.1), Geosci. Model Dev., 17, 1249–1269, https://doi.org/10.5194/gmd-17-1249-2024, 2024.
+- Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
-What is ibicus?
+What is StoryPy?
 ---------------
 
-*A user-friendly toolkit to bias adjust climate models…*
+*A user-friendly toolkit to analyze dynamical storylines…*
 
+StoryPy implements the dynamical storyline framework using CMIP model output.
 A variety of methods have been developed for the bias adjustment of climate models. Some are better suited for certain variables; others will introduce modifications to the climate change trend while others are explicitly trend-preserving. ibicus provides a unified interface for applying a variety of different methods (8 currently) for bias adjustment published in peer reviewed literature.
 
 Given climate model data: during a reference period (``cm_hist``) and future / application period (``cm_future``) as well as observations or reanalysis data during the reference period (``obs``), ibicus provides a standardized user-interface for initializing and applying a bias adjustment method, for example ISIMIP:
