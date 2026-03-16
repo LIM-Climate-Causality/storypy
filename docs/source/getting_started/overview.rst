@@ -13,7 +13,7 @@
 Overview
 ========
 
-** StoryPy aim to facilitate analyzing dynamical storylines by providing efficient and user-friendly tools that is flexible and adaptable for various storyline research and policy applications..**
+**StoryPy aim to facilitate analyzing dynamical storylines by providing efficient and user-friendly tools that is flexible and adaptable for various storyline research and policy applications..**
 
 Representing model uncertainty may be relevant for a lot of applications, yet the analysis is not trivial and requires a lot of data processing and expert knowledge. This tool can help bring together experts with stakeholders to understand uncertainty at the regional scale with the technical part not being an issue, leaving more time for science, interpretation and communication.
 
@@ -23,9 +23,9 @@ What are storylines?
 
 The uncertainty in the response of the climate system to anthropogenic forcing is large, at regional scales, this uncertainty is associated with uncertain atmospheric circulation, such as the position of the storm track, the frequency of weather regimes, or the change in ENSO-driven teleconnections.
 
-Dynamical storylines explore plausible changes in regional climate driven by qualitatively different -yet plausible- forced responses in large-scale remote drivers, such as Arctic Amplification, tropical amplification, and the stratospheric polar vortex. In this way, storylines use physical understanding to link large-scale thermodynamic and dynamic climate responses to regional impacts and present a small set of projections in a conditional way.
+Dynamical storylines explore plausible changes in regional climate driven by qualitatively different (yet plausible) forced responses in large-scale remote drivers, such as polar amplification, tropical amplification, and the stratospheric polar vortex. In this way, storylines use physical understanding to link large-scale thermodynamic and dynamic climate responses to regional impacts and present a small set of projections in a conditional way.
 
-It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of GCMs contributing to the Coupled Model Intercomparison Project (CMIP). This approach helps address uncertainties in regional climate responses by
+It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of GCMs contributing to the Coupled Model Intercomparison Project (CMIP). This approach proposed by Zappa&Shepherd 2017, helps address uncertainties in regional climate responses
 
 - The multimodel mean and the treatment of the large uncertainty around it in probabilistic terms is often not really meaningful for decision-making.
 
@@ -36,8 +36,30 @@ What is StoryPy?
 
 *A user-friendly toolkit to analyze dynamical storylines…*
 
-StoryPy implements the dynamical storyline framework using CMIP model output.
-A variety of methods have been developed for the bias adjustment of climate models. Some are better suited for certain variables; others will introduce modifications to the climate change trend while others are explicitly trend-preserving. ibicus provides a unified interface for applying a variety of different methods (8 currently) for bias adjustment published in peer reviewed literature.
+StoryPy implements the dynamical storyline framework using CMIP model output. It provides
+
+- a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
+
+- customizable options for selecting remote drivers, target seasons, and climate variables or climatic-impact drivers.
+
+We designed two options for processing CMIP data:
+
+1. Option A: Using ESMValTool (via ESMValTool recipes) to download and preprocess the CMIP datasets, including regridding. Requirements:
+    - ESMValTool installation and a working ESMValTool environment.
+    - ESMValTool recipes / configuration compatible with target variables and drivers.
+    - ESMValTool preprocessing can generate large intermediate files. Ensure sufficient disk space in the working directory.
+
+2. Option B: Using a local CMIP database where StoryPy reads CMIP-style NetCDF files directly from a local directory, following naming and grid conventions as described in
+    - CMIP datasets already available locally (or accessible via a mounted filesystem).
+      >>> <data_dir>/
+          ├── <var_name>/
+          │   ├── <mon>/
+          │   │   ├── <g025>/
+          │   │   │   ├── <var_name>_<period>_<model>_<experiment>_<member>_<grid>.nc
+          │   │   │   └── ...
+          │   │   └── ...
+          │   └── ...
+          └── ...
 
 Given climate model data: during a reference period (``cm_hist``) and future / application period (``cm_future``) as well as observations or reanalysis data during the reference period (``obs``), ibicus provides a standardized user-interface for initializing and applying a bias adjustment method, for example ISIMIP:
 
