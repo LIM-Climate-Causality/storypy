@@ -25,7 +25,7 @@ The uncertainty in the response of the climate system to anthropogenic forcing i
 
 Dynamical storylines explore plausible changes in regional climate driven by qualitatively different (yet plausible) forced responses in large-scale remote drivers, such as polar amplification, tropical amplification, and the stratospheric polar vortex. In this way, storylines use physical understanding to link large-scale thermodynamic and dynamic climate responses to regional impacts and present a small set of projections in a conditional way.
 
-It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of GCMs contributing to the Coupled Model Intercomparison Project (CMIP). This approach proposed by Zappa&Shepherd 2017, helps address uncertainties in regional climate responses
+It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of Global Circulation Models (GCMs) contributing to the Coupled Model Intercomparison Project (CMIP). This approach, as proposed by Zappa&Shepherd 2017, helps address uncertainties in regional climate responses.
 
 - The multimodel mean and the treatment of the large uncertainty around it in probabilistic terms is often not really meaningful for decision-making.
 
@@ -40,11 +40,13 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers, target seasons, and climate variables or climatic-impact drivers.
+- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers (C_x).
 
 We designed two options for processing CMIP data:
 
-1. Option A: Using ESMValTool (via ESMValTool recipes) to download and preprocess the CMIP datasets, including regridding. Requirements:
+1. Option A: Using ESMValTool (via ESMValTool recipes) to download and preprocess the CMIP datasets, including regridding.
+
+  Requirements:
     - ESMValTool installation and a working ESMValTool environment.
     - ESMValTool recipes / configuration compatible with target variables and drivers.
     - ESMValTool preprocessing can generate large intermediate files. Ensure sufficient disk space in the working directory.
@@ -65,9 +67,11 @@ We designed two options for processing CMIP data:
 
 Given climate model data: during a reference period (``cm_hist``) and future / application period (``cm_future``) as well as observations or reanalysis data during the reference period (``obs``), ibicus provides a standardized user-interface for initializing and applying a bias adjustment method, for example ISIMIP:
 
->>> from ibicus import ISIMIP
->>> debiaser = ISIMIP.from_variable("tas")
->>> debiased_cm_future = debiaser.apply(obs, cm_hist, cm_future)
+>>> from storypy.preprocess import ESMValProcessor, ModelDataPreprocessor, parse_config
+>>> processor_target = ESMValProcessor(esmval_config, user_config)
+OR
+>>> processor_target = ModelDataPreprocessor(user_config)
+>>> processor_target.process_var()
 
 The methods currently implemented in ibicus include:
 
