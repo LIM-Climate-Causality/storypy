@@ -31,6 +31,22 @@ It is said that a forced response is plausible when a global climate model proje
 
 - Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
+**Methodology**
+Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, 
+
+.. math::
+
+   \Delta C_{xm} = \Delta T_m P_{xm}
+
+Pattern response Zappa&Shepherd 20217, and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021)
+.. math::
+
+   P_{xm} = a_x
+          + b_x \left(\frac{\Delta T_{polar}}{\Delta T}\right)'_m
+          + c_x \left(\frac{\Delta T_{trop}}{\Delta T}\right)'_m
+          + d_x \left(\frac{\Delta T_{strat}}{\Delta T}\right)'_m
+          + e_{xm}
+
 What is StoryPy?
 ---------------
 
@@ -40,7 +56,7 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers ($C_{x}$).
+- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers (C<sub>x</sub>).
 
 We designed two options for processing CMIP data:
 
@@ -113,10 +129,15 @@ The methods currently implemented in ibicus include:
      - * Maraun 2016
      - Delta Change applies the trend from historical to future climate model to the observations. Although technically not a bias adjustment method, as no transformation is applied to the climate model, it is included here as it provides an adjusted future climatology.
 
-Users can modify the settings of different debiasers to adapt them to their use-case, for example:
+Users can compute the driver indices and regression coefficients for a desired study region, for example:
 
->>> pr_debiaser1 = QuantileMapping.for_precipitation(model_type = "hurdle")
->>> pr_debiaser2 = pr_debiaser2 = QuantileMapping.for_precipitation(model_type = "censored")
+For the driver indices:
+>>> from storypy.compute import compute_drivers
+>>> df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
+
+For the regression coefficients:
+>>> from storypy.compute import run_regression
+>>> outputs = run_regression(main_config)
 
 *… as well as a framework for evaluating the performance of different bias adjustment methods:*
 
@@ -144,10 +165,10 @@ ibicus includes a framework that enables the user to conduct this evaluation as 
 
 - Assumptions testing: this component helps the user check some assumptions underlying the use of different bias adjustment methods to choose the most appropriate method and refine its parameters.
 
-What is ibicus not?
--------------------
+What storypy cannot guarantee
+-----------------------------
 
-After trying to convince you of the advantages of using ibicus, we also want to alert you to what ibicus currently does not do:
+After motivating you on the advantages of using storypy, we also want to bring to your attention what storypy currently does not do:
 
 1. ibicus offers a multivariate evaluation of the bias adjusted climate model but does not currently support multivariate bias adjustment, meaning the correction of spatial or inter-variable structure. Whether or not to correct for example the inter-variable structure, which could be seen as an integral feature of the climate model, is a contentious and debated topic of research. If such correction is necessary, the excellent `MBC <https://cran.r-project.org/web/packages/MBC/index.html>`_ or `SBCK <https://github.com/yrobink/SBCK>`_ package are suitable solutions. For a more detailed discussion of the advantages and possible drawbacks of multivariate bias adjustment we refer to Spuler et al. (2023) cited above. |brr|
 
