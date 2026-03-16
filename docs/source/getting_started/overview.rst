@@ -49,8 +49,9 @@ We designed two options for processing CMIP data:
     - ESMValTool recipes / configuration compatible with target variables and drivers.
     - ESMValTool preprocessing can generate large intermediate files. Ensure sufficient disk space in the working directory.
 
-2. Option B: Using a local CMIP database where StoryPy reads CMIP-style NetCDF files directly from a local directory, following naming and grid conventions as described in
+2. Option B: Using a local CMIP database where StoryPy reads CMIP-style NetCDF files directly from a local directory. Provided that:
     - CMIP datasets already available locally (or accessible via a mounted filesystem).
+    - It follows the naming and grid conventions as described below.
       
     >>> <data_dir>/
     >>> ├── <var_name>/
