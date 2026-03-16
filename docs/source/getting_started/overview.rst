@@ -34,7 +34,7 @@ It is said that a forced response is plausible when a global climate model proje
 What is StoryPy?
 ---------------
 
-*A user-friendly toolkit to analyze dynamical storylines…*
+**A user-friendly toolkit to analyze dynamical storylines…**
 
 StoryPy implements the dynamical storyline framework using CMIP model output. It provides
 
@@ -51,15 +51,16 @@ We designed two options for processing CMIP data:
 
 2. Option B: Using a local CMIP database where StoryPy reads CMIP-style NetCDF files directly from a local directory, following naming and grid conventions as described in
     - CMIP datasets already available locally (or accessible via a mounted filesystem).
-      >>> <data_dir>/
-          ├── <var_name>/
-          │   ├── <mon>/
-          │   │   ├── <g025>/
-          │   │   │   ├── <var_name>_<period>_<model>_<experiment>_<member>_<grid>.nc
-          │   │   │   └── ...
-          │   │   └── ...
-          │   └── ...
-          └── ...
+      
+    >>> <data_dir>/
+    >>> ├── <var_name>/
+    >>> │   ├── <mon>/
+    >>> │   │   ├── <g025>/
+    >>> │   │   │   ├── <var_name>_<period>_<model>_<experiment>_<member>_<grid>.nc
+    >>> │   │   │   └── ...
+    >>> │   │   └── ...
+    >>> │   └── ...
+    >>> └── ...
 
 Given climate model data: during a reference period (``cm_hist``) and future / application period (``cm_future``) as well as observations or reanalysis data during the reference period (``obs``), ibicus provides a standardized user-interface for initializing and applying a bias adjustment method, for example ISIMIP:
 
