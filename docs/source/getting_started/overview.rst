@@ -32,13 +32,14 @@ It is said that a forced response is plausible when a global climate model proje
 - Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
 **Methodology**
-Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, 
+Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, the end-of-century climate change response :math:`∆C_xm` in a field :math:`C` at location :math:`x`, in model :math:`m`, is expressed as a linear function of global warming :math:`∆T_m` and the climate response pattern :math:`P_xm`
 
 .. math::
 
    \Delta C_{xm} = \Delta T_m P_{xm}
 
-Pattern response Zappa&Shepherd 20217, and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021)
+Pattern response (:math:`∆P_xm` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the three remote drivers scaled by global warming.
+
 .. math::
 
    P_{xm} = a_x
@@ -56,7 +57,7 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers (C<sub>x</sub>).
+- customizable options for selecting remote drivers (:math:`X`), target seasons, and climate variables or climatic-impact drivers (:math:`C_x`).
 
 We designed two options for processing CMIP data:
 
