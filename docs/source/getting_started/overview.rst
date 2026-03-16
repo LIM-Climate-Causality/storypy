@@ -40,7 +40,7 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers ($C_x$).
+- customizable options for selecting remote drivers (X), target seasons, and climate variables or climatic-impact drivers ($C_{x}$).
 
 We designed two options for processing CMIP data:
 
