@@ -32,20 +32,20 @@ It is said that a forced response is plausible when a global climate model proje
 - Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
 **Methodology**
-Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, the end-of-century climate change response :math:`∆C_xm` in a field :math:`C` at location :math:`x`, in model :math:`m`, is expressed as a linear function of global warming :math:`∆T_m` and the climate response pattern :math:`P_xm`
+Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, the end-of-century climate change response :math:`∆C_{xm}` in a field :math:`C` at location :math:`x`, in model :math:`m`, is expressed as a linear function of global warming :math:`∆T_m` and the climate response pattern :math:`P_{xm}`
 
 .. math::
 
    \Delta C_{xm} = \Delta T_m P_{xm}
 
-Pattern response (:math:`∆P_xm` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the three remote drivers scaled by global warming.
+Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
 
 .. math::
 
    P_{xm} = a_x
-          + b_x \left(\frac{\Delta T_{polar}}{\Delta T}\right)'_m
-          + c_x \left(\frac{\Delta T_{trop}}{\Delta T}\right)'_m
-          + d_x \left(\frac{\Delta T_{strat}}{\Delta T}\right)'_m
+          + b_x \left(\frac{\Delta T_{driver1}}{\Delta T}\right)'_m
+          + c_x \left(\frac{\Delta T_{driver2}}{\Delta T}\right)'_m
+          + d_x \left(\frac{\Delta T_{driver3}}{\Delta T}\right)'_m
           + e_{xm}
 
 What is StoryPy?
