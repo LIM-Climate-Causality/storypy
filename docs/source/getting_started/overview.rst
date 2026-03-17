@@ -25,20 +25,21 @@ The uncertainty in the response of the climate system to anthropogenic forcing i
 
 Dynamical storylines explore plausible changes in regional climate driven by qualitatively different (yet plausible) forced responses in large-scale remote drivers, such as polar amplification, tropical amplification, and the stratospheric polar vortex. In this way, storylines use physical understanding to link large-scale thermodynamic and dynamic climate responses to regional impacts and present a small set of projections in a conditional way.
 
-It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of Global Circulation Models (GCMs) contributing to the Coupled Model Intercomparison Project (CMIP). This approach, as proposed by Zappa&Shepherd 2017, helps address uncertainties in regional climate responses.
+It is said that a forced response is plausible when a global climate model projects such a change, this is why storylines are evaluated leveraging differences in ensembles of Global Circulation Models (GCMs) contributing to the Coupled Model Intercomparison Project (CMIP). This approach, as proposed by Zappa&Shepherd, 2017, helps address uncertainties in regional climate responses.
 
 - The multimodel mean and the treatment of the large uncertainty around it in probabilistic terms is often not really meaningful for decision-making.
 
 - Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
 **Methodology**
+
 Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, the end-of-century climate change response :math:`∆C_{xm}` in a field :math:`C` at location :math:`x`, in model :math:`m`, is expressed as a linear function of global warming :math:`∆T_m` and the climate response pattern :math:`P_{xm}`
 
 .. math::
 
    \Delta C_{xm} = \Delta T_m P_{xm}
 
-Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
+Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd, 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
 
 .. math::
 
@@ -47,6 +48,7 @@ Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` pr
           + c_x \left(\frac{\Delta T_{driver2}}{\Delta T}\right)'_m
           + d_x \left(\frac{\Delta T_{driver3}}{\Delta T}\right)'_m
           + e_{xm}
+
 
 What is StoryPy?
 ---------------
@@ -57,7 +59,7 @@ StoryPy implements the dynamical storyline framework using CMIP model output. It
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
-- customizable options for selecting remote drivers (:math:`X`), target seasons, and climate variables or climatic-impact drivers (:math:`C_x`).
+- customizable options for selecting remote drivers :math:`X`, target seasons, and climate variables or climatic-impact drivers :math:`C_x`.
 
 We designed two options for processing CMIP data:
 
@@ -91,80 +93,17 @@ OR
 >>> processor_target.process_var()
 >>> processor_target.process_driver()
 
-The methods currently implemented in ibicus include:
-
-.. list-table::
-   :widths: 25 25 50
-   :header-rows: 1
-
-   * -
-     - References
-     - Brief description
-   * - :py:class:`ISIMIP`
-     - * Lange 2019 |brr|
-       * Lange 2021
-     - ISIMIP is a semi-parametric quantile mapping method that attempts to be trend-preserving by generating ‘pseudo future observations’ and executing the quantile mapping between the future climate model and the pseudo future observations. ISIMIP includes special cases for each of the variables, and for a complete description of the methodology we refer to the ISIMIP documentation.
-   * - :py:class:`LinearScaling`
-     - * Maraun 2016
-     - Linear scaling corrects a climate model by the difference in the mean of observations and the mean of the climate model on the reference period, either additively or multiplicatively.
-   * - :py:class:`QuantileMapping`
-     - * Cannon et al. 2015 |brr|
-       * Maraun 2016
-     - (Parametric) quantile mapping maps every quantile of the climate model distribution to the corresponding quantile in observations during the reference period. Optionally, additive or multiplicative detrending of the mean can be applied to make the method trend preserving. Most bias adjustment methods build on quantile mapping.
-   * - :py:class:`ScaledDistributionMapping`
-     - * Switanek et al. 2017
-     - SDM is conceptually similar to QDM, and in the same ‘family’ as CDFt and ECDFM. It is a parametric quantile mapping approach that also attempts to be trend preserving in all quantiles. In addition to the quantile mapping the method also contains an event likelihood adjustment.
-   * - :py:class:`CDFt`
-     - * Michelangeli et al. 2009 |brr|
-       * Vrac et al. 2012 |brr|
-       * Famien et al. 2018 |brr|
-       * Vrac et al. 2016
-     - CDFt is a non-parametric quantile mapping method that attempts to be trend-preserving in all quantiles. CDFt applies a concatenation between a quantile mapping of future and historical climate model data and a quantile mapping of the future climate model with historical observations. It also includes a running window over the future period to account for changes in the simulated trend.
-   * - :py:class:`ECDFM`
-     - * Li et al. 2010
-     - ECDFM is a parametric quantile mapping method that attempts to be trend-preserving in all quantiles. ECDFM applies quantilewise correction by adding the difference between a quantile mapping of observations and future values and a quantile mapping of historical climate model values to the future climate model ones.
-   * - :py:class:`QuantileDeltaMapping`
-     - * Cannon et al. 2015
-     - QDM is a parametric quantile mapping method that also attempts to be trend-preserving. It extends ECDFM such that the two quantile mappings defined there can not only added but also divided by each other to create multiplicative corrections. Furthermore it includes both a running window over the year: to account for seasonality, as well as one over the future period to account for changes in trends.
-   * - :py:class:`DeltaChange`
-     - * Maraun 2016
-     - Delta Change applies the trend from historical to future climate model to the observations. Although technically not a bias adjustment method, as no transformation is applied to the climate model, it is included here as it provides an adjusted future climatology.
-
 Users can compute the driver indices and regression coefficients for a desired study region, for example:
 
 For the driver indices:
+
 >>> from storypy.compute import compute_drivers
 >>> df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
 
 For the regression coefficients:
+
 >>> from storypy.compute import run_regression
 >>> outputs = run_regression(main_config)
-
-*… as well as a framework for evaluating the performance of different bias adjustment methods:*
-
-Bias adjustment is prone to misuse and can generate seemingly meaningful results even if applied to variables that have no physical link whatsoever. Any bias adjustment approach should therefore include a thorough evaluation of the obtained results, not only of marginal aspects of the corrected statistics, but also comparing the multivariate, temporal and spatial structure of observations, the raw climate model and the bias corrected climate model. Furthermore users should ideally evaluate wether bias adjustment modifies derived quantities of interest such as climate indices.
-
-ibicus includes a framework that enables the user to conduct this evaluation as part of the bias adjustment process. The evaluation framework consists of three parts:
-
-- Evaluation of the method on a validation period: This component enables the user to compare the bias corrected model to the ‘raw’ model and observations / reanalysis data, all on a chosen validation period. Both statistical properties as well as threshold based climate indices (threshold metrics) such as dry days, hot days, etc. that are often used for calculating climate impacts can be compared. The following table summarises the types of analysis that can be conducted in this component:
-
-+----------------+------------------------+-----------------------+
-|                | Statistical properties | Threshold metrics     |
-+================+========================+=======================+
-| Marginal       | x                      |  x                    |
-+----------------+------------------------+-----------------------+
-| Temporal       |                        |  x (spell length)     |
-+----------------+------------------------+-----------------------+
-| Spatial        | x (RMSE)               | x (spatial extent)    |
-+----------------+------------------------+-----------------------+
-| Spatiotemporal |                        |  x (cluster size)     |
-+----------------+------------------------+-----------------------+
-| Multivariate   | x (correlation)        |  x (joint exceedance) |
-+----------------+------------------------+-----------------------+
-
-- Analysis of trend preservation: Bias adjustment can significantly modify the trend projected in the climate model simulation. This component helps the user assess whether a certain method preserves the climate model trend or not, in order to provide the basis for an informed choice on whether trend modification is desirable for the application at hand.
-
-- Assumptions testing: this component helps the user check some assumptions underlying the use of different bias adjustment methods to choose the most appropriate method and refine its parameters.
 
 What storypy cannot guarantee
 -----------------------------
@@ -180,15 +119,16 @@ After motivating you on the advantages of using storypy, we also want to bring t
 About the authors
 -----------------
 
-Fiona is a PhD student at the Department of Meteorology, working with Prof Marlene Kretschmer and Prof Ted Shepherd. Her work focuses on developing methods for combining dynamical and machine learning models to boost S2S forecasts of extreme weather events. Prior to starting her PhD, Fiona worked for two years at the not-for-profit organisation “2° Investing Initiative” on the alignment of the European financial sectors with climate mitigation goals. Last year, she was part of an international fellowship programme by the German foreign ministry working on finance for resilience with the Coalition for Climate Resilient Investing. Fiona holds a degree in Physics (MSc, University of Edinburgh; BSc, University of Goettingen) as well as Environmental Change and Management (MSc, University of Oxford).
+Richard is a PhD student of Jun. Prof. Marlene Kretschmer at the Leipzig Institutate for Meteorology, Leipzig University. His research interests lie at the intersection of atmospheric science, climate modeling, and data science, aiming to tackle pressing global challenges like climate change. Richard holds an MSc in Environmental Physics from the University of Bremen (Germany), and a BTech in Physics Electronics from the Federal university of Technology, Minna (Nigeria).
 
-Jakob Wessel is a PhD student at the University of Exeter where he is working on "Statistical post-processing of ensemble forecasts of compound weather risk" under supervision of Dr Frank Kwasniok and Dr Chris Ferro, in cooperation with the UK Met Office. Jakob is currently based at the Alan Turing Institute as part of their PhD enrichment scheme. Jakob holds an MSc in Data Science (Statistics) from University College London where he worked on an MSc dissertation about improving methods for climate model downscaling, under supervision of Prof Richard Chandler, winning the price for the best MSc dissertation. He worked as Research Analyst at the 2° Investing Initiative and gained experience as a project manager and data analyst at Serlo Education. He holds a BSc in Mathematics from Technical University Berlin and a BA in Philosophy and Political Science from Free University Berlin.
+Julia is a postdoctoral researcher at the University of Leipzig, working with Jun. Prof. Marlene Kretschmer. She is interested in how large scale variability and change can influence regional climate. In particular, she is interested in South America because it is the region where she grew up. However, this initial interest has led to a general interest in large scale circulation dynamics of the Southern Hemisphere and its remote drivers, such as tropical modes of variability such as El Nino Southern Oscillation and the Indian Ocean Dipole and the stratosphere.
 
+Marlene studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University.
 
 Get in touch
 ------------
 
-If you have suggestions on additional methods we could add, questions you'd like to ask, issues that you are finding in the application of the methods that are already implemented, or bugs in the code, please contact us under ibicus.py@gmail.com or `raise an issue on github <https://github.com/ecmwf-projects/ibicus/issues>`_.
+If you have suggestions on additional methods we could add, questions you'd like to ask, issues that you are finding in the application of the methods that are already implemented, or bugs in the code, please contact us under ...@gmail.com or `raise an issue on github <https://github.com/LIM-Climate-Causality/storypy/issues>`_.
 
 
 Cite the package
