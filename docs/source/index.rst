@@ -55,7 +55,7 @@ Each notebook is hosted on **nbviewer** and linked directly.
 API Reference
 =============
 
-This section provides the technical documentation for **storypy**, including all modules, classes, and functions.
+This section provides the technical documentation for **storypy**, including all modules, methods, and functions.
 
 .. toctree::
    :maxdepth: 2
@@ -84,7 +84,7 @@ Acknowledgements
 The development of this package was supported by the **Leipzig Institute for Meteorology (LIM)**,  
 with partnership funding from the **Deutsche Forschungsgemeinschaft (DFG)** under AC3.
 
-.. image:: images/logos.png
+.. image:: images/fig_pr.png
    :width: 800
    :alt: ECMWF logos
    :align: center
