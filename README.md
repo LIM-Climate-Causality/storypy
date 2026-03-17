@@ -1,7 +1,7 @@
 # StoryPy
 **StoryPy is an advanced toolkit that facilitates analyzing dynamical storylines by providing efficient and user-friendly tools that is flexible and adaptable for various storyline research and policy applications.**
 
-StoryPy implements the dynamical storyline framework, presented in `Zappa&Shepherd`, using CMIP model output. It provides
+StoryPy implements the dynamical storyline framework, presented in [Zappa&Shepherd, 2017](https://journals.ametsoc.org/doi/10.1175/JCLI-D-16-0807.1), using CMIP model output. It provides
 
 - a set of functions to analyze multi-model ensembles by focusing on the identification of dynamical storylines.
 
@@ -30,9 +30,41 @@ We designed two options for processing CMIP data:
         │   └── ...
         └── ...```
 
-Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, user can preprocess the data by calling the methods and using the following steps for example:
+## Methodology
+Following the pattern scaling assumption described in Tebaldi & Arblaster (2014), the end-of-century climate change response $\Delta C_{xm}$ in a field $C$ at location $x$ and for model $m$ is expressed as a linear function of global warming $\Delta T_m$ and the climate response pattern $P_{xm}$:
+
+$$
+\Delta C_{xm} = \Delta T_m \, P_{xm}
+$$
+
+The pattern response formulation ($P_{xm}$ at location $x$ and model $m$), proposed in Zappa & Shepherd (2017) and adopted in several storyline studies (e.g., Mindlin et al., 2020; Ghosh et al., 2023; Monerie et al., 2023), is used to quantify the influence of multiple sources of uncertainty. This is represented as a linear combination of remote-driver responses scaled by global warming $\Delta T$:
+
+$$
+P_{xm} = a_x
+       + b_x \left(\frac{\Delta T_{\text{driver1}}}{\Delta T}\right)'_m
+       + c_x \left(\frac{\Delta T_{\text{driver2}}}{\Delta T}\right)'_m
+       + d_x \left(\frac{\Delta T_{\text{driver3}}}{\Delta T}\right)'_m
+       + e_{xm}
+$$
+
+## Installing
+Storypy can be installed via PyPi. Simply run the following commands:
+
+```pip install storypy``` or ```pip3 install storypy```
+
+It can also be installed directly from source using pip
+
+```git clone git@github.com:LIM-Climate-Causality/storypy.git```
+
+```cd storypy```
+
+```pip install .```
+
+### If installing to be used with Esmvaltool recipe
+Before installing the storypy package, users need to setup Esmvaltool on their machine. After the setup of Esmvaltool, activate the esmvaltool environment. Then, pip install the storypy package. This is because Esmvaltool uses some dependencies which are only available in conda.
 
 ### Configuration and input parameter
+Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, user can preprocess the data by calling the methods and using the following steps for example:
 
 Main user configuration
 
@@ -91,26 +123,6 @@ For the regression coefficients
 
     >>> from storypy.compute import run_regression
     >>> outputs = run_regression(user_config)
-## Installing
-Storypy can be installed via PyPi. Simply run the following commands:
 
-```pip install storypy``` or ```pip3 install storypy```
-
-It can also be installed directly from source using pip
-
-```git clone git@github.com:LIM-Climate-Causality/storypy.git```
-
-```cd storypy```
-
-```pip install .```
-
-
-## If installing to be used with Esmvaltool recipe
-Before installing the storypy package, users need to setup Esmvaltool on their machine. After the setup of Esmvaltool, activate the esmvaltool environment. Then, pip install the storypy package. This is because Esmvaltool uses some dependencies which are only available in conda.
-
-
-Install the storypy package
-
-```pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple storypy```
 
 
