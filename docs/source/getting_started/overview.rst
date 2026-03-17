@@ -40,7 +40,7 @@ Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014,
 
    \Delta C_{xm} = \Delta T_m P_{xm}
 
-Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd, 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2023, Monerie et al. 2023) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
+Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd, 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2023, Monerie et al. 2023) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming :math:`∆T`.
 
 .. math::
 
@@ -106,12 +106,12 @@ For the regression coefficients:
 >>> from storypy.compute import run_regression
 >>> outputs = run_regression(user_config)
 
-What storypy does not do (limitations)
+What storypy does not do (Limitations)
 --------------------------------------
 
-After motivating you on the advantages of using torypy, we also want to bring to your attention what storypy currently does not do. Storypy is designed to make it easier to build and compare storylines from climate-model output, but there are important cases where StoryPy cannot guarantee “correct” or comparable results. In particular, StoryPy assumes that the inputs it receives are physically meaningful, consistently processed, and comparable across models. The following limitations are worth keeping in mind.
+After motivating you on the advantages of using storypy, we also want to bring to your attention what storypy currently does not do. Storypy is designed to make it easier to build and compare storylines from climate-model output, but there are important cases where StoryPy cannot guarantee “correct” or comparable results. In particular, StoryPy assumes that the inputs it receives are physically meaningful, consistently processed, and comparable across models. The following limitations are worth keeping in mind.
 
-1. Regridded data and other processing irregularities
+1. **Regridded data and other processing irregularities**
 
 StoryPy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
 
@@ -142,7 +142,7 @@ If you have suggestions on additional methods we could add, questions you'd like
 Cite the package
 ----------------
 
-If you use ibicus for your research, please cite our publication:
+If you use storypy for your research, please cite our publication:
 
 Alawode, R., Mindlin, J., Kretschmer, M.: ...
 
