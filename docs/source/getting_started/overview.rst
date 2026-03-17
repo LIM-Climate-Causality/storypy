@@ -31,7 +31,8 @@ It is said that a forced response is plausible when a global climate model proje
 
 - Dynamical storylines provide a physically grounded framework to interpret the spread in the models by linking regional responses to variations in large-scale circulation drivers.
 
-**Methodology**
+Methodology
+-----------
 
 Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014, the end-of-century climate change response :math:`∆C_{xm}` in a field :math:`C` at location :math:`x`, in model :math:`m`, is expressed as a linear function of global warming :math:`∆T_m` and the climate response pattern :math:`P_{xm}`
 
@@ -39,7 +40,7 @@ Following the pattern scaling assumption described in Tebaldi & Arblaster, 2014,
 
    \Delta C_{xm} = \Delta T_m P_{xm}
 
-Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd, 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2020, Monerie et al. 2021) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
+Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` proposed in Zappa&Shepherd, 2017), and also adopted in other storyline studies (e.g. Mindlin et al. 2020, Ghosh et al. 2023, Monerie et al. 2023) is used to quantify the influence of multiple sources of uncertainty, expressed as a linear combination of the response of the remote drivers scaled by global warming.
 
 .. math::
 
@@ -53,7 +54,7 @@ Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` pr
 What is StoryPy?
 ---------------
 
-**A user-friendly toolkit to analyze dynamical storylines…**
+**A user-friendly toolkit for analyzing dynamical storylines…**
 
 StoryPy implements the dynamical storyline framework using CMIP model output. It provides
 
@@ -103,14 +104,21 @@ For the driver indices:
 For the regression coefficients:
 
 >>> from storypy.compute import run_regression
->>> outputs = run_regression(main_config)
+>>> outputs = run_regression(user_config)
 
-What storypy cannot guarantee
------------------------------
+What storypy does not do (limitations)
+--------------------------------------
 
-After motivating you on the advantages of using storypy, we also want to bring to your attention what storypy currently does not do:
+After motivating you on the advantages of using torypy, we also want to bring to your attention what storypy currently does not do. Storypy is designed to make it easier to build and compare storylines from climate-model output, but there are important cases where StoryPy cannot guarantee “correct” or comparable results. In particular, StoryPy assumes that the inputs it receives are physically meaningful, consistently processed, and comparable across models. The following limitations are worth keeping in mind.
 
-1. ibicus offers a multivariate evaluation of the bias adjusted climate model but does not currently support multivariate bias adjustment, meaning the correction of spatial or inter-variable structure. Whether or not to correct for example the inter-variable structure, which could be seen as an integral feature of the climate model, is a contentious and debated topic of research. If such correction is necessary, the excellent `MBC <https://cran.r-project.org/web/packages/MBC/index.html>`_ or `SBCK <https://github.com/yrobink/SBCK>`_ package are suitable solutions. For a more detailed discussion of the advantages and possible drawbacks of multivariate bias adjustment we refer to Spuler et al. (2023) cited above. |brr|
+1. Regridded data and other processing irregularities
+
+StoryPy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
+
+.. image:: images/logos.png
+   :width: 800
+   :alt: ECMWF logos
+   :align: center
 
 2. ibicus is not suitable for 'downscaling' the climate model which is a term for methods used to increase the spatial resolution of climate models. Although bias adjustment methods have been used for downscaling, in general they are not appropriate, since they do not reproduce the local scale variability that is crucial on those scales. Maraun 2016 argues that for downscaling, stochastic methods have great advantages. An example of a package addressing the problem of downscaling is: `Rglimclim <https://www.ucl.ac.uk/~ucakarc/work/glimclim.html>`_. |brr|
 
@@ -123,7 +131,7 @@ Richard is a PhD student of Jun. Prof. Marlene Kretschmer at the Leipzig Institu
 
 Julia is a postdoctoral researcher at the University of Leipzig, working with Jun. Prof. Marlene Kretschmer. She is interested in how large scale variability and change can influence regional climate. In particular, she is interested in South America because it is the region where she grew up. However, this initial interest has led to a general interest in large scale circulation dynamics of the Southern Hemisphere and its remote drivers, such as tropical modes of variability such as El Nino Southern Oscillation and the Indian Ocean Dipole and the stratosphere.
 
-Marlene studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University.
+Marlene studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University (Germany).
 
 Get in touch
 ------------
@@ -134,20 +142,16 @@ If you have suggestions on additional methods we could add, questions you'd like
 Cite the package
 ----------------
 
-If you use ibicus for your research, please cite our publication in Geoscientific Model Development:
+If you use ibicus for your research, please cite our publication:
 
-Spuler, F. R., Wessel, J. B., Comyn-Platt, E., Varndell, J., and Cagnazzo, C.: ibicus: a new open-source Python package and comprehensive interface for statistical bias adjustment and evaluation in climate modelling (v1.0.1), Geosci. Model Dev., 17, 1249–1269, https://doi.org/10.5194/gmd-17-1249-2024, 2024.
+Alawode, R., Mindlin, J., Kretschmer, M.: ...
 
 References
 ----------
 
-- Maraun, D. Bias Correcting Climate Change Simulations - a Critical Review. Curr Clim Change Rep 2, 211–220 (2016). https://doi.org/10.1007/s40641-016-0050-x
-- Cannon, A. J., Sobie, S. R., & Murdock, T. Q. (2015). Bias Correction of GCM Precipitation by Quantile Mapping: How Well Do Methods Preserve Changes in Quantiles and Extremes? In Journal of Climate (Vol. 28, Issue 17, pp. 6938–6959). American Meteorological Society. https://doi.org/10.1175/jcli-d-14-00754.1
-- Switanek, M. B., Troch, P. A., Castro, C. L., Leuprecht, A., Chang, H.-I., Mukherjee, R., & Demaria, E. M. C. (2017). Scaled distribution mapping: a bias correction method that preserves raw climate model projected changes. In Hydrology and Earth System Sciences (Vol. 21, Issue 6, pp. 2649–2666). Copernicus GmbH. https://doi.org/10.5194/hess-21-2649-2017.
-- Michelangeli, P.-A., Vrac, M., & Loukos, H. (2009). Probabilistic downscaling approaches: Application to wind cumulative distribution functions. In Geophysical Research Letters (Vol. 36, Issue 11). American Geophysical Union (AGU). https://doi.org/10.1029/2009gl038401
-- Famien, A. M., Janicot, S., Ochou, A. D., Vrac, M., Defrance, D., Sultan, B., & Noël, T. (2018). A bias-corrected CMIP5 dataset for Africa using the CDF-t method – a contribution to agricultural impact studies. In Earth System Dynamics (Vol. 9, Issue 1, pp. 313–338). Copernicus GmbH. https://doi.org/10.5194/esd-9-313-2018
-- Vrac, M., Drobinski, P., Merlo, A., Herrmann, M., Lavaysse, C., Li, L., & Somot, S. (2012). Dynamical and statistical downscaling of the French Mediterranean climate: uncertainty assessment. In Natural Hazards and Earth System Sciences (Vol. 12, Issue 9, pp. 2769–2784). Copernicus GmbH. https://doi.org/10.5194/nhess-12-2769-2012
-- Vrac, M., Noël, T., & Vautard, R. (2016). Bias correction of precipitation through Singularity Stochastic Removal: Because occurrences matter. In Journal of Geophysical Research: Atmospheres (Vol. 121, Issue 10, pp. 5237–5258). American Geophysical Union (AGU). https://doi.org/10.1002/2015jd024511
-- Li, H., Sheffield, J., and Wood, E. F. (2010), Bias correction of monthly precipitation and temperature fields from Intergovernmental Panel on Climate Change AR4 models using equidistant quantile matching, J. Geophys. Res., 115, D10101, doi:10.1029/2009JD012882.
-- Lange, S. (2019). Trend-preserving bias adjustment and statistical downscaling with ISIMIP3BASD (v1.0). In Geoscientific Model Development (Vol. 12, Issue 7, pp. 3055–3070). Copernicus GmbH. https://doi.org/10.5194/gmd-12-3055-2019
-- Lange, S. (2022). ISIMIP3BASD (3.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/ZENODO.6758997
+- Ghosh, R., & Shepherd, T. G. (2023). Storylines of Maritime Continent dry period precipitation changes under global warming. Environmental Research Letters, 18(3), 034017. https://doi.org/10.1088/1748-9326/acb788.
+- Levine, X. J., Williams, R. S., Marshall, G., Orr, A., Graff, L. S., Handorf, D., Karpechko, A., Köhler, R., Wijngaard, R. R., Johnston, N., Lee, H., Nieradzik, L., & Mooney, P. A. (2024). Storylines of summer Arctic climate change constrained by Barents–Kara seas and Arctic tropospheric warming for climate risk assessment. Earth System Dynamics, 15(4), 1161–1177. https://doi.org/10.5194/esd-15-1161-2024.
+- Mindlin, J., Shepherd, T. G., Vera, C. S., Osman, M., Zappa, G., Lee, R. W., & Hodges, K. I. (2020). Storyline description of Southern Hemisphere midlatitude circulation and precipitation response to greenhouse gas forcing. Climate Dynamics, 54(9–10), 4399–4421. https://doi.org/10.1007/s00382-020-05234-1.
+- Monerie, P., Biasutti, M., Mignot, J., Mohino, E., Pohl, B., & Zappa, G. (2023). Storylines of Sahel Precipitation change: Roles of the North Atlantic and Euro‐Mediterranean temperature. Journal of Geophysical Research Atmospheres, 128(16). https://doi.org/10.1029/2023jd038712.
+- Tebaldi, C., & Arblaster, J. M. (2014). Pattern scaling: Its strengths and limitations, and an update on the latest model simulations. Climatic Change, 122(3), 459–471. https://doi.org/10.1007/s10584-013-1032-9.
+- Zappa, G., & Shepherd, T. G. (2017). Storylines of atmospheric circulation change for European Regional Climate Impact Assessment. Journal of Climate, 30(16), 6561–6577. https://doi.org/10.1175/jcli-d-16-0807.1.
