@@ -120,9 +120,9 @@ StoryPy can work with data that has been regridded or post-processed, but it doe
    :alt: PR changes
    :align: center
 
-2. ibicus is not suitable for 'downscaling' the climate model which is a term for methods used to increase the spatial resolution of climate models. Although bias adjustment methods have been used for downscaling, in general they are not appropriate, since they do not reproduce the local scale variability that is crucial on those scales. Maraun 2016 argues that for downscaling, stochastic methods have great advantages. An example of a package addressing the problem of downscaling is: `Rglimclim <https://www.ucl.ac.uk/~ucakarc/work/glimclim.html>`_. |brr|
+2. **Fundamental problems with model data (“garbage in, garbage out”)**
 
-3. 'Garbage in, garbage out'. ibicus cannot guarantee that the climate model is suitable for the problem at hand. As mentioned above, although bias adjustment can help with misspecifications, it cannot solve fundamental problems within climate models. The evaluation framework can help you identify whether such fundamental issues exist in the chosen climate model. However, this cannot replace careful climate model selection before starting a climate impact study. |brr|
+StoryPy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, StoryPy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
 
 About the authors
 -----------------
@@ -137,7 +137,6 @@ Get in touch
 ------------
 
 If you have suggestions on additional methods we could add, questions you'd like to ask, issues that you are finding in the application of the methods that are already implemented, or bugs in the code, please contact us under ...@gmail.com or `raise an issue on github <https://github.com/LIM-Climate-Causality/storypy/issues>`_.
-
 
 Cite the package
 ----------------
