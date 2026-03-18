@@ -116,9 +116,11 @@ After motivating you on the advantages of using storypy, we also want to bring t
 Storypy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
 
 .. image:: images/fig_pr.png
-   :width: 80%
+   :width: 800
    :alt: PR changes
    :align: center
+
+   **Figure:** PR changes over time across experiments.
 
 2. **Fundamental problems with model data (“garbage in, garbage out”)**
 
@@ -129,7 +131,7 @@ Storypy cannot guarantee that a given climate model dataset is suitable for the 
    :align: center
    :alt: PR changes
 
-   This figure shows the changes in PR over time.
+   **Figure:** PR changes over time across experiments.
 
 About the authors
 -----------------
