@@ -84,7 +84,7 @@ Acknowledgements
 The development of this package was supported by the **Leipzig Institute for Meteorology (LIM)**,  
 with partnership funding from the **Deutsche Forschungsgemeinschaft (DFG)** under AC3.
 
-.. image:: images/fig_pr.png
+.. image:: images/logos.png
    :width: 800
    :alt: ECMWF logos
    :align: center

@@ -113,25 +113,25 @@ After motivating you on the advantages of using storypy, we also want to bring t
 
 1. **Regridded data and other processing irregularities**
 
-StoryPy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
+Storypy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
 
-.. image:: fig_pr.png
-   :width: 800
+.. image:: images/fig_pr.png
+   :width: 80%
    :alt: PR changes
    :align: center
 
 2. **Fundamental problems with model data (“garbage in, garbage out”)**
 
-StoryPy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, StoryPy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
+Storypy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, Storypy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
 
 About the authors
 -----------------
 
-Richard is a PhD student of Jun. Prof. Marlene Kretschmer at the Leipzig Institutate for Meteorology, Leipzig University. His research interests lie at the intersection of atmospheric science, climate modeling, and data science, aiming to tackle pressing global challenges like climate change. Richard holds an MSc in Environmental Physics from the University of Bremen (Germany), and a BTech in Physics Electronics from the Federal university of Technology, Minna (Nigeria).
+**Richard** is a PhD student of Jun. Prof. Marlene Kretschmer at the Leipzig Institutate for Meteorology, Leipzig University. His research interests lie at the intersection of atmospheric science, climate modeling, and data science, aiming to tackle pressing global challenges like climate change. Richard holds an MSc in Environmental Physics from the University of Bremen (Germany), and a BTech in Physics Electronics from the Federal university of Technology, Minna (Nigeria).
 
-Julia is a postdoctoral researcher at the University of Leipzig, working with Jun. Prof. Marlene Kretschmer. She is interested in how large scale variability and change can influence regional climate. In particular, she is interested in South America because it is the region where she grew up. However, this initial interest has led to a general interest in large scale circulation dynamics of the Southern Hemisphere and its remote drivers, such as tropical modes of variability such as El Nino Southern Oscillation and the Indian Ocean Dipole and the stratosphere.
+**Julia** is a postdoctoral researcher at the University of Leipzig, working with Jun. Prof. Marlene Kretschmer. She is interested in how large scale variability and change can influence regional climate. In particular, she is interested in South America because it is the region where she grew up. However, this initial interest has led to a general interest in large scale circulation dynamics of the Southern Hemisphere and its remote drivers, such as tropical modes of variability such as El Nino Southern Oscillation and the Indian Ocean Dipole and the stratosphere.
 
-Marlene studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University (Germany).
+**Marlene** studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University (Germany).
 
 Get in touch
 ------------
