@@ -118,14 +118,13 @@ Storypy can work with data that has been regridded or post-processed, but it doe
 .. image:: fig_pr.png
    :width: 800
    :alt: PR changes
-   :align: center
 
 
 2. **Fundamental problems with model data (“garbage in, garbage out”)**
 
 Storypy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, Storypy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
 
-.. figure:: images/fig_pr.png
+.. figure:: /images/fig_pr.png
    :width: 800
    :align: center
    :alt: PR changes
