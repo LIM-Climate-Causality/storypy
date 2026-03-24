@@ -140,7 +140,7 @@ About the authors
 
 **Julia** is a postdoctoral researcher at the University of Leipzig, working with Jun. Prof. Marlene Kretschmer. She is interested in how large scale variability and change can influence regional climate. In particular, she is interested in South America because it is the region where she grew up. However, this initial interest has led to a general interest in large scale circulation dynamics of the Southern Hemisphere and its remote drivers, such as tropical modes of variability such as El Nino Southern Oscillation and the Indian Ocean Dipole and the stratosphere.
 
-**Marlene** studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK). Since 2022, She has been a Junior Professor of Climate Causality at Leipzig University (Germany).
+**Marlene** has been a Junior Professor of Climate Causality at Leipzig University (Germany) since 2022. She studied mathematics before completing a PhD in climate physics at the Potsdam Institute for Climate Impact Research. She then worked as a postdoctoral researcher in the Department of Meteorology at the University of Reading (UK).
 
 Get in touch
 ------------
