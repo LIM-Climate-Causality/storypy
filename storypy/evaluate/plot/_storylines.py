@@ -152,22 +152,35 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     # Show the figure
     plt.show()
 
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from matplotlib.ticker import FuncFormatter
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.util import add_cyclic_point
+
 def create_multi_panel_figure(
-    data_list,            # list of xarray.DataArray (each with .lat, .lon)
-    extent_list,          # list of [lon_min, lon_max, lat_min, lat_max]
-    colormaps,            # list of colormap names (same length as data_list)
-    titles,              # list of subplot titles
-    colorbar_label='Colorbar Label',       # color level resolution
-    ncols=3,              # number of columns in the figure
-    figsize_per_plot=(5, 4)  # approximate size per subplot
+    data_list,
+    extent_list,
+    colormaps,
+    titles,
+    colorbar_label="Colorbar Label",
+    ncols=3,
+    figsize_per_plot=(5, 4),
+
+    # optional args
+    shared_colorbar=True,
+    fixed_range=None,          # e.g. 0.06 to match paper; None = auto from data
+    tick_levels=None,          # e.g. [-0.06, -0.03, 0, 0.03, 0.06]
+    extend="both"              # paper-like saturation at ends
 ):
     """
-    Flexible multi-panel map plotting function with individual colorbars.
+    Flexible multi-panel map plotting function.
 
-    Each subplot has:
-      - its own colorbar
-      - symmetric color levels centered at 0 (with white band)
-      - consistent coastlines and gridlines
+    - If shared_colorbar=True: one shared colorbar for all panels.
+    - If fixed_range is provided: all panels share vmin/vmax = ±fixed_range.
     """
 
     nplots = len(data_list)
@@ -177,54 +190,74 @@ def create_multi_panel_figure(
     fig, axs = plt.subplots(
         nrows, ncols,
         figsize=figsize, dpi=300, constrained_layout=True,
-        subplot_kw={'projection': ccrs.PlateCarree()}
+        subplot_kw={"projection": ccrs.PlateCarree()}
     )
-
-    # Flatten axes for easy iteration
     axs = np.array(axs).flatten()
+
+    # choose one shared range (paper-like), or global max from data
+    if fixed_range is None:
+        fixed_range = float(max(np.nanmax(np.abs(d.values)) for d in data_list))
+
+    # build shared levels/ticks once
+    color_levels, default_ticks = make_symmetric_colorbar(fixed_range, num_steps=12)
+    if tick_levels is None:
+        tick_levels = default_ticks
+
+    ims = []
 
     for i, ax in enumerate(axs[:nplots]):
         data = data_list[i]
 
-        # --- Setup map ---
         ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
-        ax.add_feature(cfeature.BORDERS, linestyle='--', linewidth=0.5)
-        ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
+        ax.add_feature(cfeature.BORDERS, linestyle="--", linewidth=0.5)
+        ax.gridlines(draw_labels=False, linewidth=0.5, color="gray", alpha=0.5, linestyle="--")
 
-        # --- Symmetric color range ---
-        plot_range = max(abs(data.min()), abs(data.max()))
-        color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
-
-        # --- Centered white colormap ---
+        # centered white band colormap (keep your logic)
         original_cmap = plt.get_cmap(colormaps[i])
         shifted_cmap = original_cmap(np.linspace(0, 1, len(color_levels)))
         mid_index = len(color_levels) // 2
         shifted_cmap[mid_index - 1:mid_index + 1] = [1, 1, 1, 1]
         new_cmap = mcolors.ListedColormap(shifted_cmap)
 
-        # --- Mask near zero ---
-        data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
-        norm = mcolors.TwoSlopeNorm(vmin=-plot_range, vcenter=0, vmax=plot_range)
+        norm = mcolors.TwoSlopeNorm(vmin=-fixed_range, vcenter=0, vmax=fixed_range)
 
-        # --- Plot ---
+        data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+
         im = ax.contourf(
             lon_cyclic, data.lat, data_cyclic,
             levels=color_levels, cmap=new_cmap, norm=norm,
+            extend=extend,
             transform=ccrs.PlateCarree()
         )
+        ims.append(im)
 
         ax.set_title(titles[i], fontsize=12, pad=4)
 
-        # --- Individual colorbar ---
-        cbar = fig.colorbar(im, ax=ax, orientation='horizontal', fraction=0.046, pad=0.08, ticks=tick_levels)
-        cbar.set_label(colorbar_label, fontsize=10)
-        cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))
-        cbar.ax.tick_params(labelsize=8)
+        # remove per-panel colorbar if using shared
+        if not shared_colorbar:
+            cbar = fig.colorbar(im, ax=ax, orientation="horizontal",
+                                fraction=0.046, pad=0.08, ticks=tick_levels)
+            cbar.set_label(colorbar_label, fontsize=10)
+            cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+            cbar.ax.tick_params(labelsize=8)
 
-    # Hide unused axes if nplots < nrows * ncols
     for ax in axs[nplots:]:
         ax.set_visible(False)
+
+    # shared colorbar
+    if shared_colorbar and ims:
+        cbar = fig.colorbar(
+            ims[0],
+            ax=axs[:nplots],
+            orientation="horizontal",
+            fraction=0.05,
+            pad=0.08,
+            ticks=tick_levels
+        )
+        cbar.set_label(colorbar_label, fontsize=12)
+        cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        cbar.ax.tick_params(labelsize=10)
 
     plt.show()
 

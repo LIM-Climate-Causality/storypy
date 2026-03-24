@@ -1,7 +1,7 @@
 from ._compute_driver import (
     stand_numpy,
     stand_pandas,
-    compute_drivers_from_netcdf,
+    compute_drivers,
     driver_indices,
     _collect_scalar_drivers,
     _build_drivers_dataset,

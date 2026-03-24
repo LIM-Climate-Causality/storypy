@@ -3,10 +3,9 @@
 Welcome to storypy's documentation!
 ===================================
 
-**storypy** is a Python package that provides a tailored interface for computing climate storylines.
+**storypy** is an advanced toolkit that facilitates analyzing dynamical storylines by providing efficient and user-friendly tools that is flexible and adaptable for various storyline research and policy applications.
 
-It offers:
-----------
+It implements the dynamical storyline framework, presented in `Zappa & Shepherd, 2017 <https://journals.ametsoc.org/doi/10.1175/JCLI-D-16-0807.1>`_, using CMIP model output. It provides:
 
 - A set of functions to analyze multi‐model ensembles, focusing on the identification of dynamical storylines.
 - Customizable options for selecting remote drivers, target seasons, and climate variables or climatic‐impact drivers.

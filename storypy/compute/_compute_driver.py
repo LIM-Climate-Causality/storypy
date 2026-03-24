@@ -23,7 +23,7 @@ def stand_numpy(data):
     Notes
     -----
     This helper is applied column-wise to data frames produced by
-    :func:`compute_drivers_from_netcdf`.
+    :func:`compute_drivers`.
     """
     anom = (data - np.mean(data)) / np.std(data)
     return anom
@@ -48,7 +48,7 @@ def stand_pandas(series: pd.Series) -> pd.Series:
         return (series - series.mean()) * np.nan
     return (series - series.mean()) / std
 
-def compute_drivers_from_netcdf(driver_config):
+def compute_drivers(driver_config):
     """
     Build driver regressors from preprocessed NetCDF files.
 
@@ -90,7 +90,7 @@ def compute_drivers_from_netcdf(driver_config):
     Examples
     --------
     >>> cfg = {"work_dir": "./out", "var_name": ["sst", "uas"], "short_name": ["SST", "UAS"]}
-    >>> raw, scaled, std = compute_drivers_from_netcdf(cfg)
+    >>> raw, scaled, std = compute_drivers(cfg)
     >>> list(raw.columns)
     ['SST', 'UAS']
     """
@@ -101,6 +101,63 @@ def compute_drivers_from_netcdf(driver_config):
     if len(var_names) != len(short_names):
         raise ValueError("Length of 'var_name' and 'short_name' must match.")
 
+    candidates = [
+        os.path.join(work_dir, "drivers.nc"),
+        os.path.join(work_dir, "remote_drivers", "drivers.nc"),
+    ]
+    drivers_path = next((p for p in candidates if os.path.exists(p)), None)
+
+    if drivers_path is not None:
+        ds = xr.open_dataset(drivers_path)
+
+        if "model" not in ds.coords:
+            raise ValueError("drivers.nc must have a 'model' coordinate")
+        if "gw" not in ds:
+            raise ValueError("drivers.nc must contain variable 'gw'")
+
+        # Ensure model coords are strings (safer for alignment)
+        ds = ds.assign_coords(model=ds["model"].astype(str))
+
+        # Map desired output names -> variable names in file
+        var_map = dict(zip(short_names, var_names))
+
+        # Pull raw driver columns from ds
+        data_raw = {}
+        for sn in short_names:
+            v = var_map[sn]
+            if v not in ds:
+                raise ValueError(f"drivers.nc is missing required driver variable '{v}'")
+            da = ds[v]
+
+            # must be 1D over model
+            if tuple(da.dims) != ("model",):
+                raise ValueError(
+                    f"drivers.nc variable '{v}' must have dims ('model',), got {da.dims}"
+                )
+            data_raw[sn] = da.values.astype(float)
+
+        df_raw = pd.DataFrame(data_raw, index=ds["model"].values)
+
+        gw = ds["gw"]
+        if tuple(gw.dims) != ("model",):
+            raise ValueError(f"'gw' must have dims ('model',), got {gw.dims}")
+        gw_vals = gw.values.astype(float)
+
+        # scale and standardize
+        with np.errstate(divide="ignore", invalid="ignore"):
+            df_scaled = df_raw.div(gw_vals, axis=0)
+
+        df_standardized = df_scaled.apply(stand_numpy, axis=0)
+
+        out_dir = os.path.join(work_dir, "remote_drivers")
+        os.makedirs(out_dir, exist_ok=True)
+        df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
+        df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+        df_standardized.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
+
+        print(f"Loaded drivers from {drivers_path} and saved indices to: {out_dir}")
+        return df_raw, df_scaled, df_standardized
+
     # Map short_name to var_name
     var_map = dict(zip(short_names, var_names))
 
@@ -110,7 +167,7 @@ def compute_drivers_from_netcdf(driver_config):
         raise FileNotFoundError(f"No .nc files found in {work_dir}")
 
     # Load the global warming index file
-    gw_file = os.path.join(work_dir, "driver_gw.nc")
+    gw_file = os.path.join(work_dir, "remote_driver_gw.nc")
     if not os.path.exists(gw_file):
         raise FileNotFoundError("Missing required global warming file: remote_driver_gw.nc")
     gw_ds = xr.open_dataset(gw_file)
@@ -186,6 +243,17 @@ def compute_drivers_from_netcdf(driver_config):
 
     # Standardize the scaled data (z-score normalization)
     df_standardized = df_scaled.apply(stand_numpy, axis=0)
+
+    # drivers_ds = xr.Dataset(
+    #     {sn: ("model", df_raw[sn].values.astype(float)) for sn in short_names},
+    #     coords={"model": df_raw.index.astype(str).tolist()},
+    # )
+
+    # drivers_ds["gw"] = ("model", gw_vals.sel(model=df_raw.index.astype(str)).values.astype(float))
+
+    # out_dir = os.path.join(work_dir, "remote_drivers")
+    # os.makedirs(out_dir, exist_ok=True)
+    # drivers_ds.to_netcdf(os.path.join(out_dir, "drivers.nc"))
 
     # Create the output directory and save the dataframes as CSV
     out_dir = os.path.join(work_dir, "remote_drivers")
@@ -351,7 +419,7 @@ def driver_indices(config):
 
     See Also
     --------
-    compute_drivers_from_netcdf
+    compute_drivers
         Alternative pathway that reads drivers directly from preprocessed NetCDF files.
     """
     meta = group_metadata(config["input_data"].values(), "dataset")
@@ -386,6 +454,8 @@ def driver_indices(config):
     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
     df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+
+    return df_raw, df_scaled, df_stand
 
 if __name__ == "__main__":
     with run_diagnostic() as config:

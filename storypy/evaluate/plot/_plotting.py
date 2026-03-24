@@ -13,6 +13,15 @@ def create_arc(lon_min, lon_max, lat_min, lat_max, n_points=100):
 def plot_function(target_change, p_values, positives_model, negatives_model, region_extents, sig_level=0.05, sig=1):
     import cartopy.feature as cfeature
 
+    plt.rcParams.update({
+        "font.size": 18,
+        "axes.titlesize": 18,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "figure.titlesize": 20
+    })
+
     # Determine the extent of the map based on `target_change`
     if 'region_extent' in target_change.attrs:
         extent = target_change.attrs['region_extent']
@@ -30,10 +39,10 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         float(target_change['lat'].min()), float(target_change['lat'].max())
     ]
 
-    # Debugging
-    print("Target Change Extent:")
-    print(f"Longitude: {target_change['lon'].min().values} to {target_change['lon'].max().values}")
-    print(f"Latitude: {target_change['lat'].min().values} to {target_change['lat'].max().values}")
+    # # Debugging
+    # print("Target Change Extent:")
+    # print(f"Longitude: {target_change['lon'].min().values} to {target_change['lon'].max().values}")
+    # print(f"Latitude: {target_change['lat'].min().values} to {target_change['lat'].max().values}")
 
     # Align all datasets to the same grid as `target_change`
     if p_values is not None:
@@ -41,10 +50,10 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         p_values = p_values.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
         #p_values = p_values.interp_like(target_change)  # Align to `target_change`
 
-        # Debugging
-        print("P-Values Extent:")
-        print(f"Longitude: {p_values['lon'].min().values} to {p_values['lon'].max().values}")
-        print(f"Latitude: {p_values['lat'].min().values} to {p_values['lat'].max().values}")
+        # # Debugging
+        # print("P-Values Extent:")
+        # print(f"Longitude: {p_values['lon'].min().values} to {p_values['lon'].max().values}")
+        # print(f"Latitude: {p_values['lat'].min().values} to {p_values['lat'].max().values}")
 
     if positives_model is not None and negatives_model is not None:
         print("Aligning positives_model and negatives_model...")
@@ -59,17 +68,17 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         #positives_model_da = positives_model_da.interp_like(target_change)
         #negatives_model_da = negatives_model_da.interp_like(target_change)
 
-        # Debugging
-        print("Positives Model Extent:")
-        print(f"Longitude: {positives_model_da['lon'].min().values} to {positives_model_da['lon'].max().values}")
-        print(f"Latitude: {positives_model_da['lat'].min().values} to {positives_model_da['lat'].max().values}")
+        # # Debugging
+        # print("Positives Model Extent:")
+        # print(f"Longitude: {positives_model_da['lon'].min().values} to {positives_model_da['lon'].max().values}")
+        # print(f"Latitude: {positives_model_da['lat'].min().values} to {positives_model_da['lat'].max().values}")
 
-        print("Negatives Model Extent:")
-        print(f"Longitude: {negatives_model_da['lon'].min().values} to {negatives_model_da['lon'].max().values}")
-        print(f"Latitude: {negatives_model_da['lat'].min().values} to {negatives_model_da['lat'].max().values}")
+        # print("Negatives Model Extent:")
+        # print(f"Longitude: {negatives_model_da['lon'].min().values} to {negatives_model_da['lon'].max().values}")
+        # print(f"Latitude: {negatives_model_da['lat'].min().values} to {negatives_model_da['lat'].max().values}")
 
     # Initialize the plot
-    fig, ax = plt.subplots(figsize=(10, 12), subplot_kw={'projection': ccrs.PlateCarree()})
+    fig, ax = plt.subplots(figsize=(15, 20), subplot_kw={'projection': ccrs.PlateCarree()})
     ax.set_extent(extent, crs=ccrs.PlateCarree())
     ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='black', linewidth=0.7)
     ax.add_feature(cfeature.BORDERS.with_scale('50m'), linestyle='--', edgecolor='gray')
@@ -81,7 +90,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         cmap='PuOr',
         levels=20,
         add_colorbar=True,
-        cbar_kwargs={'shrink': 0.7, 'label': 'Precipitation Change (mm/day)'}
+        cbar_kwargs={'shrink': 0.7, 'label': 'Precipitation Change (mm/day)', "fraction": 0.03, "pad": 0.02,}
     )
 
     # Drawing arcs for the specified regions
@@ -110,7 +119,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         )
 
     # Add title and gridlines
-    ax.set_title("Target Change with Stippling")
+    ax.set_title("End of century changes in winter (NDJFM) precipitation in CMIP6 high-emission scenario")
     gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.7, linestyle='--')
     gl.top_labels = gl.right_labels = False
 

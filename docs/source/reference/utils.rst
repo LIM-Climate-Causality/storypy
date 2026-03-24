@@ -1,89 +1,89 @@
-.. # define a hard line break for HTML
-.. |br| raw:: html
+.. .. # define a hard line break for HTML
+.. .. |br| raw:: html
 
-   <br />
+..    <br />
 
-.. # define a double hard line break for HTML
-.. |brr| raw:: html
+.. .. # define a double hard line break for HTML
+.. .. |brr| raw:: html
 
-   <br /> <br />
-
-
-ibicus.utils module
-==========================
-
-.. automodule:: ibicus.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
+..    <br /> <br />
 
 
-ibicus.utils Convert variables
--------------------------------------
+.. ibicus.utils module
+.. ==========================
 
-.. autofunction:: get_tasrange
-
-.. autofunction:: get_tasskew
-
-.. autofunction:: get_tasmin
-
-.. autofunction:: get_tasmax
-
-.. autofunction:: get_tasmin_tasmax
-
-.. autofunction:: get_tasrange_tasskew
-
-.. autofunction:: get_prsnratio
-
-.. autofunction:: get_pr
-
-.. autofunction:: get_prsn
+.. .. automodule:: ibicus.utils
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
 
+.. ibicus.utils Convert variables
+.. -------------------------------------
 
-ibicus.utils StatisticalModel abstract-class
-----------------------------------------------------
+.. .. autofunction:: get_tasrange
 
-.. autoclass:: StatisticalModel
-	:members: fit, cdf, ppf
+.. .. autofunction:: get_tasskew
 
+.. .. autofunction:: get_tasmin
 
-ibicus.utils gen\_PrecipitationIgnoreZeroValuesModel-class
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. .. autofunction:: get_tasmax
 
-.. autoclass:: gen_PrecipitationIgnoreZeroValuesModel
-	:members: fit, cdf, ppf
+.. .. autofunction:: get_tasmin_tasmax
 
+.. .. autofunction:: get_tasrange_tasskew
 
-ibicus.debias gen\_PrecipitationHurdleModel-class
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.. .. autofunction:: get_prsnratio
 
-.. autoclass:: gen_PrecipitationHurdleModel
-	:members: fit, cdf, ppf
+.. .. autofunction:: get_pr
 
-
-ibicus.utils gen\_PrecipitationGammaLeftCensoredModel-class
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-.. autoclass:: gen_PrecipitationGammaLeftCensoredModel
-	:members: fit, cdf, ppf
+.. .. autofunction:: get_prsn
 
 
-ibicus.utils Mathematical helpers
------------------------------------------
 
-.. autofunction:: ecdf
+.. ibicus.utils StatisticalModel abstract-class
+.. ----------------------------------------------------
 
-.. autofunction:: iecdf
-
-.. autofunction:: quantile_map_non_parametically
+.. .. autoclass:: StatisticalModel
+.. 	:members: fit, cdf, ppf
 
 
-ibicus.utils Logging
------------------------------------------
+.. ibicus.utils gen\_PrecipitationIgnoreZeroValuesModel-class
+.. ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-.. autofunction:: get_library_logger
+.. .. autoclass:: gen_PrecipitationIgnoreZeroValuesModel
+.. 	:members: fit, cdf, ppf
 
-.. autofunction:: get_verbosity_library_logger
 
-.. autofunction:: set_verbosity_library_logger
+.. ibicus.debias gen\_PrecipitationHurdleModel-class
+.. +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. .. autoclass:: gen_PrecipitationHurdleModel
+.. 	:members: fit, cdf, ppf
+
+
+.. ibicus.utils gen\_PrecipitationGammaLeftCensoredModel-class
+.. +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+.. .. autoclass:: gen_PrecipitationGammaLeftCensoredModel
+.. 	:members: fit, cdf, ppf
+
+
+.. ibicus.utils Mathematical helpers
+.. -----------------------------------------
+
+.. .. autofunction:: ecdf
+
+.. .. autofunction:: iecdf
+
+.. .. autofunction:: quantile_map_non_parametically
+
+
+.. ibicus.utils Logging
+.. -----------------------------------------
+
+.. .. autofunction:: get_library_logger
+
+.. .. autofunction:: get_verbosity_library_logger
+
+.. .. autofunction:: set_verbosity_library_logger

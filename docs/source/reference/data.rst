@@ -9,14 +9,14 @@
    <br /> <br />
 
 
-ibicus.variables module
-==============================
+.. ibicus.variables module
+.. ==============================
 
-.. automodule:: ibicus.variables
-   :show-inheritance:
+.. .. automodule:: ibicus.variables
+..    :show-inheritance:
 
-ibicus.debias Variable-class
---------------------------------------------
+.. ibicus.debias Variable-class
+.. --------------------------------------------
 
-.. autoclass:: Variable
-	:members:
+.. .. autoclass:: Variable
+.. 	:members:
