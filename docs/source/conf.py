@@ -96,20 +96,20 @@ html_theme_options = {
     "titles_only": False,
 }
 
-def setup(app):
-    import importlib, traceback
-    targets = [
-        "storypy.preprocess._esmval_processor",
-        "storypy.preprocess._netcdf_processor",
-        "storypy.compute._compute_driver",
-        "storypy.compute._mlr",
-        "storypy.compute._regres",
-    ]
-    for mod in targets:
-        try:
-            importlib.import_module(mod)
-            print(f"[autodoc] import ok: {mod}")
-        except Exception as e:
-            print(f"[autodoc] IMPORT FAILED: {mod} -> {e}")
-            traceback.print_exc()
+# def setup(app):
+#     import importlib, traceback
+#     targets = [
+#         "storypy.preprocess._esmval_processor",
+#         "storypy.preprocess._netcdf_processor",
+#         "storypy.compute._compute_driver",
+#         "storypy.compute._mlr",
+#         "storypy.compute._regres",
+#     ]
+#     for mod in targets:
+#         try:
+#             importlib.import_module(mod)
+#             print(f"[autodoc] import ok: {mod}")
+#         except Exception as e:
+#             print(f"[autodoc] IMPORT FAILED: {mod} -> {e}")
+#             traceback.print_exc()
 
