@@ -88,6 +88,7 @@ todo_include_todos = False
 # --- HTML output --------------------------------------------------------------
 html_theme = "sphinx_rtd_theme"
 html_static_path = []
+html_extra_path = ["images"]
 html_theme_options = {
     "collapse_navigation": False,
     "navigation_depth": 4,
