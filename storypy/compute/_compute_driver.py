@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import glob
 
+from storypy.preprocess._diagnostics import seasonal_data_months
 from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
 
 def stand_numpy(data):
@@ -305,48 +306,140 @@ def _select_one_file_per_var(dataset_list, dataset_name, var_group):
     return None
 
 
-def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
+# def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
+#     """
+#     Collect one scalar per model/driver from ESMValTool metadata.
+
+#     Reads files pointed to by ``meta`` (grouped by dataset), computes a
+#     time-mean (if necessary), and builds a list of dictionaries (one per
+#     model) containing driver values. Writes a convenience NetCDF with a
+#     ``model`` dimension to ``{work_dir}/remote_drivers/drivers.nc``.
+
+#     Parameters
+#     ----------
+#     meta : dict
+#         Metadata grouped by dataset (from :func:`esmvaltool.diag_scripts.shared.group_metadata`).
+#     work_dir : str
+#         Output directory used to persist the NetCDF.
+#     exclude_vars : set[str], optional
+#         Driver names to ignore. Defaults to :data:`EXCLUDE_VARS`.
+
+#     Returns
+#     -------
+#     (list[dict], list[str])
+#         Tuple ``(rd_list, models)`` where each dict maps driver name -> value.
+#     """
+#     rd_list = []
+#     models = []
+
+#     for dataset, dataset_list in meta.items():
+#         ts_dict = {}
+
+#         # Exact replication of colleague's dict comprehension:
+#         # last variant encountered for each variable_group wins
+#         for m in dataset_list:
+#             var = m["variable_group"]
+#             if var in EXCLUDE_VARS:
+#                 continue
+#             da = xr.open_dataset(m["filename"])[m["short_name"]]
+#             if "time" in da.dims:
+#                 value = float(da.mean(dim="time", skipna=True).item())
+#             else:
+#                 value = float(da.item()) if da.size == 1 \
+#                         else float(da.mean().item())
+#             ts_dict[var] = value  # last write wins
+
+#         if "gw" in ts_dict:
+#             rd_list.append(ts_dict)
+#             models.append(dataset)
+#         else:
+#             print(f"There is no 'gw' for model {dataset}; skipping.")
+
+#     if rd_list:
+#         drivers_ds = _build_drivers_dataset(rd_list, models)
+#         out_dir = os.path.join(work_dir, "remote_drivers")
+#         os.makedirs(out_dir, exist_ok=True)
+#         drivers_nc = os.path.join(out_dir, "drivers.nc")
+#         drivers_ds.to_netcdf(drivers_nc)
+#         print(f"Saved drivers (one scalar per model/driver) to {drivers_nc}")
+#     else:
+#         print("No models with 'gw' found; NetCDF not written.")
+
+#     return rd_list, models
+
+# New adaptation of the code to collect the scalar drivers and build a dataset with one variable per driver and a 'model' dimension.
+# Now includes the option to select a single variant per variable group.
+def _collect_scalar_drivers(meta, work_dir, exclude_vars=None,
+                             variant_selection='mean'):
     """
     Collect one scalar per model/driver from ESMValTool metadata.
 
-    Reads files pointed to by ``meta`` (grouped by dataset), computes a
-    time-mean (if necessary), and builds a list of dictionaries (one per
-    model) containing driver values. Writes a convenience NetCDF with a
-    ``model`` dimension to ``{work_dir}/remote_drivers/drivers.nc``.
-
     Parameters
     ----------
-    meta : dict
-        Metadata grouped by dataset (from :func:`esmvaltool.diag_scripts.shared.group_metadata`).
-    work_dir : str
-        Output directory used to persist the NetCDF.
-    exclude_vars : set[str], optional
-        Driver names to ignore. Defaults to :data:`EXCLUDE_VARS`.
-
-    Returns
-    -------
-    (list[dict], list[str])
-        Tuple ``(rd_list, models)`` where each dict maps driver name -> value.
+    variant_selection : str
+        How to handle multi-member models. One of:
+        - 'last'  : last variant in ESMValTool metadata order (matches
+                    original dict-comprehension behaviour)
+        - 'first' : first variant alphabetically by alias (r1i1p1f1 etc.,
+                    most reproducible, matches Zappa & Shepherd 2017)
+        - 'mean'  : average across all variants (most data-efficient)
     """
+    if variant_selection not in ('last', 'first', 'mean'):
+        raise ValueError(
+            f"variant_selection must be 'last', 'first', or 'mean', "
+            f"got '{variant_selection}'"
+        )
+
+    if exclude_vars is None:
+        exclude_vars = EXCLUDE_VARS
+
     rd_list = []
-    models = []
+    models  = []
 
     for dataset, dataset_list in meta.items():
-        ts_dict = {}
-        var_groups = sorted({m["variable_group"] for m in dataset_list})
 
-        for var in var_groups:
-            if var in EXCLUDE_VARS:
-                continue
-            sel = _select_one_file_per_var(dataset_list, dataset, var)
-            if sel is None:
-                continue
-            da = xr.open_dataset(sel["filename"])[sel["short_name"]]
-            if "time" in da.dims:
-                value = da.mean(dim="time", skipna=True).item()
-            else:
-                value = float(da.item()) if da.size == 1 else float(da.mean().item())
-            ts_dict[var] = value
+        # Group entries by variable_group
+        from collections import defaultdict
+        var_entries = defaultdict(list)
+        for m in dataset_list:
+            if m["variable_group"] not in exclude_vars:
+                var_entries[m["variable_group"]].append(m)
+
+        ts_dict = {}
+
+        for var, entries in var_entries.items():
+
+            # Sort alphabetically by alias for reproducibility
+            entries_sorted = sorted(entries, key=lambda m: m["alias"])
+
+            if variant_selection == 'last':
+                # Replicates dict-comprehension behaviour:
+                # last entry in ESMValTool metadata order wins.
+                # NOTE: ESMValTool iterates in alias-alphabetical order,
+                # so 'last' == last alphabetically == same as original.
+                selected = [entries_sorted[-1]]
+
+            elif variant_selection == 'first':
+                # First variant alphabetically — r1i1p1f1 where available.
+                # Most reproducible and matches Zappa & Shepherd 2017.
+                selected = [entries_sorted[0]]
+
+            elif variant_selection == 'mean':
+                # All variants — averaged below.
+                selected = entries_sorted
+
+            # Compute scalar value(s)
+            values = []
+            for m in selected:
+                da = xr.open_dataset(m["filename"])[m["short_name"]]
+                if "time" in da.dims:
+                    val = float(da.mean(dim="time", skipna=True).item())
+                else:
+                    val = float(da.item()) if da.size == 1 \
+                          else float(da.mean().item())
+                values.append(val)
+
+            ts_dict[var] = float(np.mean(values))
 
         if "gw" in ts_dict:
             rd_list.append(ts_dict)
@@ -356,15 +449,125 @@ def _collect_scalar_drivers(meta, work_dir, exclude_vars=None):
 
     if rd_list:
         drivers_ds = _build_drivers_dataset(rd_list, models)
-        out_dir = os.path.join(work_dir, "remote_drivers")
+        out_dir    = os.path.join(work_dir, "remote_drivers")
         os.makedirs(out_dir, exist_ok=True)
         drivers_nc = os.path.join(out_dir, "drivers.nc")
         drivers_ds.to_netcdf(drivers_nc)
-        print(f"Saved drivers (one scalar per model/driver) to {drivers_nc}")
+        print(f"Saved drivers to {drivers_nc} "
+              f"(variant_selection='{variant_selection}')")
     else:
         print("No models with 'gw' found; NetCDF not written.")
 
     return rd_list, models
+
+# # Another adaptation of the code to collect the scalar drivers and build a dataset
+# def _collect_scalar_drivers(meta, work_dir,
+#                              exclude_vars=None,
+#                              variant_selection='mean',
+#                              season_months=None,
+#                              ref_period=("1960", "1990"),
+#                              future_period=("2070", "2099")):
+#     """
+#     Collect one scalar per model/driver from ESMValTool metadata.
+
+#     Parameters
+#     ----------
+#     variant_selection : str
+#         'last', 'first', or 'mean'. See driver_indices docstring.
+#     season_months : list[int] or None
+#         If None (default), data is assumed to be already seasonally
+#         averaged by ESMValTool — just take .mean(dim='time').
+#         If a list (e.g. [12,1,2]), raw monthly data is expected and
+#         seasonal selection + anomaly + future-period subsetting is
+#         applied using ref_period and future_period.
+#     ref_period : tuple[str, str]
+#         Start and end year for anomaly reference baseline.
+#         Only used when season_months is not None.
+#     future_period : tuple[str, str]
+#         Start and end year for future period mean.
+#         Only used when season_months is not None.
+#     """
+#     if variant_selection not in ('last', 'first', 'mean'):
+#         raise ValueError(
+#             f"variant_selection must be 'last', 'first', or 'mean', "
+#             f"got '{variant_selection}'"
+#         )
+
+#     if exclude_vars is None:
+#         exclude_vars = EXCLUDE_VARS
+
+#     rd_list = []
+#     models  = []
+
+#     for dataset, dataset_list in meta.items():
+
+#         from collections import defaultdict
+#         var_entries = defaultdict(list)
+#         for m in dataset_list:
+#             if m["variable_group"] not in exclude_vars:
+#                 var_entries[m["variable_group"]].append(m)
+
+#         ts_dict = {}
+
+#         for var, entries in var_entries.items():
+
+#             entries_sorted = sorted(entries, key=lambda m: m["alias"])
+
+#             if variant_selection == 'last':
+#                 selected = [entries_sorted[-1]]
+#             elif variant_selection == 'first':
+#                 selected = [entries_sorted[0]]
+#             elif variant_selection == 'mean':
+#                 selected = entries_sorted
+
+#             values = []
+#             for m in selected:
+#                 da = xr.open_dataset(m["filename"])[m["short_name"]]
+
+#                 if "time" in da.dims:
+#                     if season_months is not None:
+#                         # Raw monthly data — apply full preprocessing
+#                         # chain using parameters from config
+#                         da = seasonal_data_months(da, season_months)
+#                         ref = da.sel(
+#                             time=slice(int(ref_period[0]),
+#                                        int(ref_period[1]))
+#                         ).mean("time")
+#                         da = da - ref
+#                         da = da.sel(
+#                             time=slice(int(future_period[0]),
+#                                        int(future_period[1]))
+#                         )
+#                     # Either pre-averaged by ESMValTool (season_months=None)
+#                     # or now reduced to future anomaly — take time mean
+#                     val = float(da.mean(dim="time", skipna=True).item())
+#                 else:
+#                     val = float(da.item()) if da.size == 1 \
+#                           else float(da.mean().item())
+
+#                 values.append(val)
+
+#             ts_dict[var] = float(np.mean(values))
+
+#         if "gw" in ts_dict:
+#             rd_list.append(ts_dict)
+#             models.append(dataset)
+#         else:
+#             print(f"There is no 'gw' for model {dataset}; skipping.")
+
+#     if rd_list:
+#         drivers_ds = _build_drivers_dataset(rd_list, models)
+#         out_dir    = os.path.join(work_dir, "remote_drivers")
+#         os.makedirs(out_dir, exist_ok=True)
+#         drivers_nc = os.path.join(out_dir, "drivers.nc")
+#         drivers_ds.to_netcdf(drivers_nc)
+#         print(f"Saved drivers to {drivers_nc} "
+#               f"(variant_selection='{variant_selection}', "
+#               f"season_months={season_months})")
+#     else:
+#         print("No models with 'gw' found; NetCDF not written.")
+
+#     return rd_list, models
 
 
 def _build_drivers_dataset(rd_list, models):
@@ -391,42 +594,94 @@ def _build_drivers_dataset(rd_list, models):
     return xr.Dataset(data_vars, coords={"model": models})
 
 
+# def driver_indices(config):
+#     """
+#     Compute driver indices from ESMValTool metadata and write CSV files.
+
+#     Uses the ``input_data`` structure from an ESMValTool configuration
+#     to collect scalar driver values by dataset, scales them by ``gw``,
+#     standardizes across models, and writes:
+
+#     * ``scaled_standardized_drivers.csv``
+#     * ``drivers.csv`` (raw)
+#     * ``scaled_drivers.csv`` (scaled by ``gw``)
+
+#     Files are written under ``{work_dir}/remote_drivers/``.
+
+#     Parameters
+#     ----------
+#     config : dict
+#         ESMValTool run configuration. Must contain:
+#         - ``input_data``: mapping of variable metadata.
+#         - ``work_dir``: output directory.
+
+#     Returns
+#     -------
+#     None
+#         Results are written to disk.
+
+#     See Also
+#     --------
+#     compute_drivers
+#         Alternative pathway that reads drivers directly from preprocessed NetCDF files.
+#     """
+#     meta = group_metadata(config["input_data"].values(), "dataset")
+
+#     rd_list, models = _collect_scalar_drivers(meta, config["work_dir"])
+#     if not rd_list:
+#         print("No drivers collected; aborting downstream steps.")
+#         return
+
+#     regressor_names = list(rd_list[0].keys())
+#     if "gw" in regressor_names:
+#         regressor_names.remove("gw")
+
+#     regressors_scaled = {}
+#     regressors = {}
+
+#     for rd in regressor_names:
+#         numer = np.array([rd_list[m_idx][rd] for m_idx, _ in enumerate(rd_list)], dtype=float)
+#         denom = np.array([rd_list[m_idx]["gw"] for m_idx, _ in enumerate(rd_list)], dtype=float)
+#         with np.errstate(divide="ignore", invalid="ignore"):
+#             scaled = numer / denom
+#         regressors_scaled[rd] = scaled
+#         regressors[rd] = numer
+
+#     out_dir = os.path.join(config["work_dir"], "remote_drivers")
+#     os.makedirs(out_dir, exist_ok=True)
+
+#     df_raw = pd.DataFrame(regressors, index=models)
+#     df_scaled = pd.DataFrame(regressors_scaled, index=models)
+#     df_stand = df_scaled.apply(stand_pandas, axis=0)
+
+#     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
+#     df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
+#     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+
+#     return df_raw, df_scaled, df_stand
+
+# New adaptation of the code to compute driver indices directly from ESMValTool metadata, with variant selection and standardized output.
 def driver_indices(config):
     """
-    Compute driver indices from ESMValTool metadata and write CSV files.
-
-    Uses the ``input_data`` structure from an ESMValTool configuration
-    to collect scalar driver values by dataset, scales them by ``gw``,
-    standardizes across models, and writes:
-
-    * ``scaled_standardized_drivers.csv``
-    * ``drivers.csv`` (raw)
-    * ``scaled_drivers.csv`` (scaled by ``gw``)
-
-    Files are written under ``{work_dir}/remote_drivers/``.
-
+    ...
     Parameters
     ----------
     config : dict
-        ESMValTool run configuration. Must contain:
-        - ``input_data``: mapping of variable metadata.
-        - ``work_dir``: output directory.
-
-    Returns
-    -------
-    None
-        Results are written to disk.
-
-    See Also
-    --------
-    compute_drivers
-        Alternative pathway that reads drivers directly from preprocessed NetCDF files.
+        Must contain 'input_data' and 'work_dir'. Optional keys:
+        - 'variant_selection' (str): 'last', 'first', or 'mean'.
+          Default is 'last' to match the original behaviour.
     """
     meta = group_metadata(config["input_data"].values(), "dataset")
 
-    rd_list, models = _collect_scalar_drivers(meta, config["work_dir"])
+    variant_selection = config.get("variant_selection", "mean")
+
+    rd_list, models = _collect_scalar_drivers(
+        meta, config["work_dir"],
+        variant_selection=variant_selection,
+    )
+
     if not rd_list:
-        print("No drivers collected; aborting downstream steps.")
+        print("No drivers collected; aborting.")
         return
 
     regressor_names = list(rd_list[0].keys())
@@ -434,28 +689,100 @@ def driver_indices(config):
         regressor_names.remove("gw")
 
     regressors_scaled = {}
-    regressors = {}
+    regressors        = {}
 
     for rd in regressor_names:
-        numer = np.array([rd_list[m_idx][rd] for m_idx, _ in enumerate(rd_list)], dtype=float)
-        denom = np.array([rd_list[m_idx]["gw"] for m_idx, _ in enumerate(rd_list)], dtype=float)
+        numer  = np.array([rd_list[i][rd]   for i in range(len(rd_list))],
+                          dtype=float)
+        denom  = np.array([rd_list[i]["gw"] for i in range(len(rd_list))],
+                          dtype=float)
         with np.errstate(divide="ignore", invalid="ignore"):
             scaled = numer / denom
         regressors_scaled[rd] = scaled
-        regressors[rd] = numer
+        regressors[rd]        = numer
 
     out_dir = os.path.join(config["work_dir"], "remote_drivers")
     os.makedirs(out_dir, exist_ok=True)
 
-    df_raw = pd.DataFrame(regressors, index=models)
-    df_scaled = pd.DataFrame(regressors_scaled, index=models)
-    df_stand = df_scaled.apply(stand_pandas, axis=0)
+    df_raw   = pd.DataFrame(regressors,        index=models)
+    df_scaled= pd.DataFrame(regressors_scaled, index=models)
+    df_stand = df_scaled.apply(stand_pandas,   axis=0)
 
     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
-    df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
+    df_raw.to_csv(  os.path.join(out_dir, "drivers.csv"))
     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
 
+    print(f"Saved driver indices (variant_selection='{variant_selection}')")
     return df_raw, df_scaled, df_stand
+
+# # Another adaptation of the code to compute driver indices directly from ESMValTool metadata
+# def driver_indices(config):
+#     """
+#     Parameters
+#     ----------
+#     config : dict
+#         Must contain 'input_data' and 'work_dir'. Optional keys:
+#         - 'variant_selection' (str): 'last', 'first', or 'mean'.
+#           Default 'mean' matches Zappa & Shepherd 2017.
+#         - 'season_months' (list[int] or None): Months for seasonal
+#           selection when raw monthly driver data is provided.
+#           e.g. [12,1,2] for DJF, [11,12,1,2,3] for NDJFM.
+#           Set to None when ESMValTool has already applied seasonal
+#           averaging (data has <=30 time steps). Default None.
+#         - 'ref_period' (tuple[str,str]): Reference period for anomaly
+#           baseline. Only used when season_months is not None.
+#           Default ('1960','1990').
+#         - 'future_period' (tuple[str,str]): Future period to average.
+#           Only used when season_months is not None.
+#           Default ('2070','2099').
+#     """
+#     meta = group_metadata(config["input_data"].values(), "dataset")
+
+#     rd_list, models = _collect_scalar_drivers(
+#         meta,
+#         config["work_dir"],
+#         variant_selection = config.get("variant_selection", "mean"),
+#         season_months     = config.get("season_months",     None),
+#         ref_period        = config.get("ref_period",        ("1960", "1990")),
+#         future_period     = config.get("future_period",     ("2070", "2099")),
+#     )
+
+#     if not rd_list:
+#         print("No drivers collected; aborting.")
+#         return
+
+#     regressor_names = list(rd_list[0].keys())
+#     if "gw" in regressor_names:
+#         regressor_names.remove("gw")
+
+#     regressors_scaled = {}
+#     regressors        = {}
+
+#     for rd in regressor_names:
+#         numer = np.array([rd_list[i][rd]   for i in range(len(rd_list))],
+#                          dtype=float)
+#         denom = np.array([rd_list[i]["gw"] for i in range(len(rd_list))],
+#                          dtype=float)
+#         with np.errstate(divide="ignore", invalid="ignore"):
+#             scaled = numer / denom
+#         regressors_scaled[rd] = scaled
+#         regressors[rd]        = numer
+
+#     out_dir = os.path.join(config["work_dir"], "remote_drivers")
+#     os.makedirs(out_dir, exist_ok=True)
+
+#     df_raw    = pd.DataFrame(regressors,        index=models)
+#     df_scaled = pd.DataFrame(regressors_scaled, index=models)
+#     df_stand  = df_scaled.apply(stand_pandas,   axis=0)
+
+#     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
+#     df_raw.to_csv(  os.path.join(out_dir, "drivers.csv"))
+#     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+
+#     print(f"Saved driver indices (variant_selection="
+#           f"'{config.get('variant_selection','mean')}', "
+#           f"season_months={config.get('season_months', None)})")
+#     return df_raw, df_scaled, df_stand
 
 if __name__ == "__main__":
     with run_diagnostic() as config:

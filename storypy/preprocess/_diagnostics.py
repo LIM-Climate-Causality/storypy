@@ -25,46 +25,53 @@ def extract_metadata(files):
 
 def seasonal_data_months(data, months):
     """
-    Selects specified months from an xarray object and averages the data for those months within each year.
-    
-    Parameters:
-    - data: xarray.DataArray or xarray.Dataset
-        The input data to process. It should have a 'time' coordinate.
-    - months: list of int
-        The months to select for averaging (1 = January, 2 = February, ..., 12 = December).
-    
-    Returns:
-    - xarray.DataArray or xarray.Dataset
-        The averaged data for the selected months within each year, accounting for months that span across years.
+    Selects specified months from an xarray object and averages the data
+    for those months within each year. Handles all calendar types including
+    noleap, 360_day, and gregorian without converting to datetime64.
+
+    Parameters
+    ----------
+    data : xarray.DataArray or xarray.Dataset
+        Input data with a 'time' coordinate.
+    months : list of int
+        Months to select (e.g. [12, 1, 2] for DJF).
+
+    Returns
+    -------
+    xarray.DataArray or xarray.Dataset
+        Averaged data for the selected months, with a 'time' coordinate
+        containing the grouped year values.
     """
-    # Ensure 'time' coordinate is in a format that supports .dt accessor
+    months_to_select = [int(m) for m in months]
+
+    # Extract month and year arrays directly from the index,
+    # works for both datetime64 and all cftime calendar types
+    time_index = data.indexes['time']
+
     if np.issubdtype(data['time'].dtype, np.datetime64):
-        time_coord = data['time']
+        month_vals = data['time'].dt.month.values
+        year_vals  = data['time'].dt.year.values
     else:
-        time_coord = xr.cftime_range(start=data.indexes['time'].to_datetimeindex()[0], periods=data['time'].size, freq='ME')
-        data = data.assign_coords(time=time_coord)
+        # cftime index — extract directly, no calendar conversion needed
+        month_vals = np.array([t.month for t in time_index])
+        year_vals  = np.array([t.year  for t in time_index])
 
-    # Select the relevant months and keep track of the original years
-    selected_months_data = data.sel(time=data['time'].dt.month.isin(months))
+    # Boolean mask for selected months
+    mask = np.isin(month_vals, months_to_select)
+    selected = data.isel(time=mask)
 
-    # Create a new time coordinate for grouping
-    new_years = selected_months_data['time'].dt.year.values.copy()
+    # Shift December into the following year so DJF groups correctly
+    new_years = year_vals[mask].copy()
+    if 12 in months_to_select:
+        dec_mask = month_vals[mask] == 12
+        new_years[dec_mask] += 1
 
-    # Shift the year for December, if necessary
-    if 12 in months:
-        dec_mask = selected_months_data['time'].dt.month == 12
-        new_years[dec_mask] += 1  # Increment year for December
+    # Assign new year as coordinate and group
+    selected = selected.assign_coords(new_year=('time', new_years))
+    averaged = selected.groupby('new_year').mean(dim='time')
+    averaged = averaged.rename({'new_year': 'time'})
 
-    # Assign the new year as a coordinate to the selected data
-    selected_months_data = selected_months_data.assign_coords(new_year=("time", new_years))
-
-    # Now group by the new year and calculate the mean
-    averaged_data = selected_months_data.groupby("new_year").mean(dim="time")
-
-    # Rename the new year dimension to 'time' for consistency
-    averaged_data = averaged_data.rename({"new_year": "time"})
-
-    return averaged_data
+    return averaged
 
 # Function to test if the mean of the sample data is significantly different from zero
 def test_mean_significance(sample_data):
@@ -158,18 +165,13 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
             region = regionmask.defined_regions.ar6.land[region_id]
             lon_min, lat_min, lon_max, lat_max = region.bounds
             target.attrs['region_extent'] = [lon_min, lon_max, lat_min, lat_max]
-        else:
-            raise ValueError("Invalid region selection. Specify 'box' with 'box' parameter or 'mask' with 'region_id'.")
+        # else:
+        #     raise ValueError("Invalid region selection. Specify 'box' with 'box' parameter or 'mask' with 'region_id'.")
 
     # Adjust time periods for seasonal or cross-year calculations
     def adjust_period_for_season(start_year, end_year, season):
-        if season == '12,1,2':
-            period_start = f"{int(start_year)-1}-12"
-            period_end = f"{int(end_year)}-02"
-        else:
-            period_start = f"{start_year}-01"
-            period_end = f"{end_year}-12"
-        return period_start, period_end
+        # After seasonal_data_months the time axis contains integer years
+        return str(int(start_year)), str(int(end_year))
 
     if season:
         period1_start, period1_end = adjust_period_for_season(period1[0], period1[1], season)
@@ -181,8 +183,8 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
         period2_end = f"{period2[1]}-12"
 
     # Subset data for the two periods
-    period1_data = target.sel(time=slice(period1_start, period1_end))
-    period2_data = target.sel(time=slice(period2_start, period2_end))
+    period1_data = target.sel(time=slice(int(period1_start), int(period1_end)))
+    period2_data = target.sel(time=slice(int(period2_start), int(period2_end)))
 
     if preserve_time_series:
         if region_method == 'box' and box:
@@ -191,7 +193,7 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
         elif region_method == 'mask' and region_id is not None:
             target = apply_region_mask(target, region_id, lat_dim=lat_dim, lon_dim=lon_dim)
         # Preserve the time dimension
-        output = target.sel(time=slice(period1_start, period2_end))
+        output = target.sel(time=slice(int(period1_start), int(period2_end)))
     else:
         # Collapse time dimension
         output = period2_data.mean(dim='time') - period1_data.mean(dim='time')

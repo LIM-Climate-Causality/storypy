@@ -37,6 +37,7 @@ Example
 >>> processor.process_driver()   # process driver variables
 """
 
+from ast import alias
 import os
 import warnings
 from storypy.utils import np, xr
@@ -158,6 +159,7 @@ class ESMValProcessor:
         self.region_extents = uc["region_extents"]
         self.var_names = uc["var_name"]
         self.titles = uc.get("titles", [])
+        self.variant_selection = uc.get("variant_selection", "mean")
          # driver configuration (fall back to user_config values)
         self.dc = driver_config or {}
         self.driver_vars = self.dc.get('var_name', self.var_names)
@@ -176,7 +178,7 @@ class ESMValProcessor:
         self.ensemble_changes = {var: [] for var in self.var_names}
         self.time_series_changes = {var: [] for var in self.var_names}
         self.driver_data = {var: [] for var in self.driver_vars}
-        self.all_model_names = set()
+        self.all_model_names = []
         # Prepare output dirs
         os.makedirs(self.config["plot_dir"], exist_ok=True)
 
@@ -206,7 +208,8 @@ class ESMValProcessor:
         for dataset, alias_list in meta_dataset.items():
             meta_group = group_metadata(alias_list, "alias")
             for alias, alias_members in meta_group.items():
-                self.all_model_names.add(alias)
+                if alias not in self.all_model_names:
+                    self.all_model_names.append(alias)
                 for var in self.var_names:
                     try:
                         # load target and gw DataArrays
@@ -226,29 +229,23 @@ class ESMValProcessor:
                             da = da * 86400
                         # climatological changes
                         change = clim_change(da, period1=self.period1, period2=self.period2,
-                                             region_method=self.region_method, box=self.box,
-                                             region_id=self.region_id, season=self.season,
-                                             preserve_time_series=False)
+                                                season=self.season,
+                                                preserve_time_series=False)
                         change_ts = clim_change(da, period1=self.period1, period2=self.period2,
-                                                region_method=self.region_method, box=self.box,
-                                                region_id=self.region_id, season=self.season,
+                                                season=self.season,
                                                 preserve_time_series=True)
                         # process gw
                         gw_seas = seasonal_data_months(target_gw['gw'], list(self.season))
-                        has_spatial = ('lat' in gw_seas.dims and 'lon' in gw_seas.dims)
-                        if has_spatial:
-                            gw_change = clim_change(gw_seas, period1=self.period1, period2=self.period2,
-                                                    region_method=self.region_method, box=self.box,
-                                                    region_id=self.region_id, season=self.season,
-                                                    preserve_time_series=False)
-                        else:
-                            gw_change = clim_change(gw_seas, period1=self.period1, period2=self.period2,
-                                                    season=self.season, preserve_time_series=False)
-                        if not has_spatial:
-                            gw_change = gw_change.expand_dims({'lat': change['lat'], 'lon': change['lon']})
-                        # append normalized changes
-                        self.ensemble_changes[var].append(change / gw_change)
-                        self.time_series_changes[var].append(change_ts / gw_change)
+                        # GW file is already a future anomaly (ESMValTool preprocessor applied
+                        # anomalies + extract_time before the script). Just average over time.
+                        gw_scalar = float(gw_seas.mean(dim='time').values)
+
+                        if gw_scalar == 0.0 or np.isnan(gw_scalar):
+                            print(f"Warning: GW scalar is {gw_scalar} for alias '{alias}'; skipping.")
+                            continue
+
+                        self.ensemble_changes[var].append(change / gw_scalar)
+                        self.time_series_changes[var].append(change_ts / gw_scalar)
                     except KeyError as e:
                         print(f"KeyError: {e}. Skipping alias {alias} in dataset {dataset}.")
                         continue
@@ -260,7 +257,8 @@ class ESMValProcessor:
             meta_group = group_metadata(alias_list, "alias")
 
             for alias, alias_members in meta_group.items():
-                self.all_model_names.add(alias)
+                if alias not in self.all_model_names:
+                    self.all_model_names.append(alias)
 
                 for var in self.driver_vars:
                     try:
@@ -300,46 +298,135 @@ class ESMValProcessor:
                     except Exception as e:
                         print(f"Error processing driver '{var}' for alias '{alias}' in dataset '{dataset}': {e}")
     
+    # def _combine_and_save(self):
+    #     """
+    #     Average ensemble members per base model and save target NetCDF.
+    #     Produces one entry per base model name (e.g. 'ACCESS-CM2') to match
+    #     the one-per-model structure of the driver CSV from the colleague's
+    #     remote_drivers.py.
+    #     """
+    #     from collections import defaultdict
+
+    #     combined_vars = {}
+
+    #     for var in self.var_names:
+    #         if not self.ensemble_changes[var]:
+    #             print(f"Warning: no data collected for variable '{var}'")
+    #             continue
+
+    #         # Group DataArrays by base model name (strip variant suffix)
+    #         # e.g. 'ACCESS-CM2_r1i1p1f1' -> 'ACCESS-CM2'
+    #         groups = defaultdict(list)
+    #         for name, da in zip(self.all_model_names,
+    #                             self.ensemble_changes[var]):
+    #             base = name.split('_r')[0]   # split on '_r' to isolate base name
+    #             groups[base].append(da)
+
+    #         mean_per_model = []
+    #         model_names = []
+
+    #         for base_model, members in sorted(groups.items()):
+    #             if len(members) == 1:
+    #                 mean_da = members[0]
+    #             else:
+    #                 mean_da = xr.concat(
+    #                     members, dim='member'
+    #                 ).mean(dim='member')
+    #             mean_da = mean_da.expand_dims(model=[base_model])
+    #             mean_per_model.append(mean_da)
+    #             model_names.append(base_model)
+
+    #         combined_vars[var] = xr.concat(
+    #             mean_per_model, dim='model',
+    #             coords='minimal', compat='override'
+    #         )
+
+    #     combined_ds = xr.Dataset(combined_vars)
+    #     out_file = os.path.join(self.user_config['work_dir'], f'target_{var}.nc')
+    #     combined_ds.to_netcdf(out_file)
+    #     print(f"Saved {len(model_names)} base models to {out_file}")
+    #     print(f"Models: {sorted(model_names)}")
+    #     return combined_ds
+    
+    # New adaptation for variant selection strategy
     def _combine_and_save(self):
-        # Combine ensemble changes grouped by base model name (e.g., UKESM1-0-LL)
+        """
+        Combine per-variant target DataArrays into one entry per base model.
+
+        Variant selection strategy is controlled by
+        ``user_config['variant_selection']``:
+
+        - ``'last'``  : last variant alphabetically — replicates
+                        accidental dict-comprehension behaviour exactly.
+        - ``'first'`` : first variant alphabetically (r1i1p1f1 where available)
+                        — most reproducible, matches Zappa & Shepherd 2017.
+        - ``'mean'``  : ensemble mean across all variants — most data-efficient
+                        but reduces inter-model spread.
+        """
         from collections import defaultdict
 
-        grouped_means = {}
+        combined_vars = {}
+        model_names   = []
 
         for var in self.var_names:
-            # Build a list of (model_id, DataArray)
-            model_data = list(zip(self.all_model_names, self.ensemble_changes[var]))
-            base_model_groups = defaultdict(list)
+            if not self.ensemble_changes[var]:
+                print(f"Warning: no data collected for variable '{var}'")
+                continue
 
-            for model_id, da in model_data:
-                base_model = model_id.split('_')[0]  # e.g., UKESM1-0-LL
-                base_model_groups[base_model].append(da)
+            # Group DataArrays by base model name, preserving insertion order
+            groups = defaultdict(list)
+            for name, da in zip(self.all_model_names,
+                                self.ensemble_changes[var]):
+                base = name.split('_r')[0]
+                groups[base].append((name, da))
 
-            # Compute mean over ensemble members for each base model
-            mean_per_model = []
-            model_names = []
+            result_per_model = []
+            model_names      = []
 
-            for base_model, members in base_model_groups.items():
-                if len(members) == 1:
-                    mean_da = members[0]
+            for base_model, members in sorted(groups.items()):
+
+                # Sort members alphabetically by alias for reproducibility
+                members_sorted = sorted(members, key=lambda x: x[0])
+
+                if self.variant_selection == 'last':
+                    _, chosen_da = members_sorted[-1]
+                    chosen_name  = members_sorted[-1][0]
+
+                elif self.variant_selection == 'first':
+                    _, chosen_da = members_sorted[0]
+                    chosen_name  = members_sorted[0][0]
+
+                elif self.variant_selection == 'mean':
+                    das          = [da for _, da in members_sorted]
+                    chosen_da    = xr.concat(das, dim='member').mean(dim='member')
+                    chosen_name  = f"{base_model} ({len(das)} members)"
+
                 else:
-                    mean_da = xr.concat(members, dim='ensemble').mean(dim='ensemble')
+                    raise ValueError(
+                        f"variant_selection must be 'last', 'first', or 'mean', "
+                        f"got '{self.variant_selection}'"
+                    )
 
-                mean_da = mean_da.expand_dims(model=[base_model])
-                mean_per_model.append(mean_da)
+                if len(members) > 1:
+                    print(f"  {base_model}: {self.variant_selection} → "
+                        f"'{chosen_name}' from {len(members)} variants")
+
+                chosen_da = chosen_da.expand_dims(model=[base_model])
+                result_per_model.append(chosen_da)
                 model_names.append(base_model)
 
-            # Concatenate all base model means along the 'model' dimension
-            grouped_means[var] = xr.concat(mean_per_model, dim='model', coords='minimal', compat='override')
+            combined_vars[var] = xr.concat(
+                result_per_model, dim='model',
+                coords='minimal', compat='override'
+            )
 
-        # Create final Dataset
-        combined_ds = xr.Dataset(grouped_means)
-
-        # Save to file
-        out_file = os.path.join(self.user_config['work_dir'], f'target_{var}.nc')
+        combined_ds = xr.Dataset(combined_vars)
+        out_file    = os.path.join(
+            self.user_config['work_dir'], f'target_{var}.nc'
+        )
         combined_ds.to_netcdf(out_file)
-        print(f"Saved ensemble mean data to {out_file}")
-
+        print(f"\nSaved {len(model_names)} models to {out_file} "
+            f"(variant_selection='{self.variant_selection}')")
         return combined_ds
     
     def _combine_drivers_and_save(self):

@@ -427,40 +427,76 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter
 import math
 
-def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label'):
+def plot_storyline_map(map_data, extents, levels, colormaps, titles,
+                              colorbar_label='Colorbar Label',
+                              white_pct=0.05):
+    """
+    Parameters
+    ----------
+    white_pct : float
+        Fraction of the total colorbar range to render as white around zero.
+        e.g. 0.05 means values within ±5% of the total range appear white.
+        Set to 0.0 to disable the white band entirely.
+        Default is 0.05 (±5% of range).
+    """
     fig = plt.figure(figsize=(12, 7))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)
 
+    im = None
     for i, pos in enumerate([(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]):
         ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
         ax.set_extent(extents[i], crs=ccrs.PlateCarree())
         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
         ax.add_feature(cfeature.BORDERS, linestyle='--', linewidth=0.5)
-        ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        
-        data = map_data[i]
-        plot_range = max(abs(data.min()), abs(data.max()))
-        color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
-        
+        ax.gridlines(draw_labels=False, linewidth=0.5,
+                     color='gray', alpha=0.5, linestyle='--')
+
+        data        = map_data[i]
+        color_levels = levels[i]
+        plot_range   = max(abs(color_levels[0]), abs(color_levels[-1]))
+        tick_levels  = color_levels[::2]
+
         original_cmap = plt.get_cmap(colormaps[i])
-        shifted_cmap = original_cmap(np.linspace(0, 1, len(color_levels)))
-        mid_index = len(color_levels) // 2
-        shifted_cmap[mid_index - 1:mid_index + 1] = [1, 1, 1, 1]
+        shifted_cmap  = original_cmap(np.linspace(0, 1, len(color_levels)))
+
+        if white_pct > 0.0:
+            # Convert percentage of total range to number of color slots
+            # Each slot covers: (2 * plot_range) / len(color_levels)
+            slot_width   = (2 * plot_range) / len(color_levels)
+            white_half   = white_pct * plot_range          # abs value threshold
+            n_white_half = max(1, round(white_half / slot_width))  # slots each side
+
+            mid_index    = len(color_levels) // 2
+            lo = max(0,                  mid_index - n_white_half)
+            hi = min(len(color_levels),  mid_index + n_white_half)
+            shifted_cmap[lo:hi] = [1, 1, 1, 1]
+
         new_cmap = mcolors.ListedColormap(shifted_cmap)
-        
-        norm = mcolors.TwoSlopeNorm(vmin=-plot_range, vcenter=0, vmax=plot_range)
-        data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
-        im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=color_levels, cmap=new_cmap, norm=norm, transform=ccrs.PlateCarree())
-        
+        norm     = mcolors.TwoSlopeNorm(
+            vmin=-plot_range, vcenter=0, vmax=plot_range
+        )
+
+        data_cyclic, lon_cyclic = add_cyclic_point(
+            data.values, coord=data.lon
+        )
+        im = ax.contourf(
+            lon_cyclic, data.lat, data_cyclic,
+            levels=color_levels, cmap=new_cmap, norm=norm,
+            extend='both', transform=ccrs.PlateCarree()
+        )
         ax.set_title(titles[i], fontsize=10, pad=4)
-        
+
     if im:
         cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])
-        cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=tick_levels)
-        cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}'))  # Formatting to 1 decimal place
+        cbar    = fig.colorbar(im, cax=cbar_ax, orientation='horizontal',
+                               ticks=tick_levels)
+        cbar.ax.xaxis.set_major_formatter(
+            FuncFormatter(lambda x, _: f'{x:.1f}')
+        )
         cbar.set_label(colorbar_label)
 
     plt.show()
+    return fig
 
 
 
