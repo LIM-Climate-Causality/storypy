@@ -236,9 +236,24 @@ class ESMValProcessor:
                                                 preserve_time_series=True)
                         # process gw
                         gw_seas = seasonal_data_months(target_gw['gw'], list(self.season))
-                        # GW file is already a future anomaly (ESMValTool preprocessor applied
-                        # anomalies + extract_time before the script). Just average over time.
-                        gw_scalar = float(gw_seas.mean(dim='time').values)
+
+                        if gw_seas.sizes['time'] > 100:
+                            # Raw monthly data delivered by ESMValTool (general_preproc not
+                            # applied to GW) — compute anomaly relative to reference period,
+                            # then take future period mean. Mirrors _collect_scalar_drivers.
+                            gw_ref    = gw_seas.sel(
+                                time=slice(int(self.period1[0]), int(self.period1[1]))
+                            ).mean('time')
+                            gw_anom   = gw_seas - gw_ref
+                            gw_scalar = float(
+                                gw_anom.sel(
+                                    time=slice(int(self.period2[0]), int(self.period2[1]))
+                                ).mean('time').values
+                            )
+                        else:
+                            # Pre-processed by ESMValTool (general_preproc applied to GW) —
+                            # file already contains future anomaly, just take the mean.
+                            gw_scalar = float(gw_seas.mean(dim='time').values)
 
                         if gw_scalar == 0.0 or np.isnan(gw_scalar):
                             print(f"Warning: GW scalar is {gw_scalar} for alias '{alias}'; skipping.")
@@ -452,29 +467,29 @@ class ESMValProcessor:
         print(f"Saved all driver variable changes to {out_file}")
         return combined_driver_ds
 
-    def _plot_spatial(self, combined):
-        from storypy.evaluate.plot import plot_function
-        # plot spatial maps for each variable
-        for var in self.var_names:
-            if self.ensemble_changes[var]:
-                arr = xr.concat(self.ensemble_changes[var], dim='model')
-                mean = arr.mean(dim='model')
-                if 'model' in arr.dims and arr.sizes['model'] > 1:
-                    pval = xr.apply_ufunc(
-                        test_mean_significance, arr,
-                        input_core_dims=[['model']], output_core_dims=[[]],
-                        vectorize=True, dask='parallelized'
-                    )
-                else:
-                    print("Only one model available; cannot compute p-values.")
-                    pval = None
-                pos = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
-                                                   'number_of_models_positive_trend_CMIP6.nc'))
-                neg = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
-                                                   'number_of_models_negative_trend_CMIP6.nc'))
-                fig = plot_function(mean, pval, pos, neg, self.region_extents)
-                if fig:
-                    fig.savefig(os.path.join(self.config['plot_dir'], f"beta_forced_{var}_plot.png"))
+    # def _plot_spatial(self, combined):
+    #     from storypy.evaluate.plot import plot_function
+    #     # plot spatial maps for each variable
+    #     for var in self.var_names:
+    #         if self.ensemble_changes[var]:
+    #             arr = xr.concat(self.ensemble_changes[var], dim='model')
+    #             mean = arr.mean(dim='model')
+    #             if 'model' in arr.dims and arr.sizes['model'] > 1:
+    #                 pval = xr.apply_ufunc(
+    #                     test_mean_significance, arr,
+    #                     input_core_dims=[['model']], output_core_dims=[[]],
+    #                     vectorize=True, dask='parallelized'
+    #                 )
+    #             else:
+    #                 print("Only one model available; cannot compute p-values.")
+    #                 pval = None
+    #             pos = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
+    #                                                'number_of_models_positive_trend_CMIP6.nc'))
+    #             neg = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
+    #                                                'number_of_models_negative_trend_CMIP6.nc'))
+    #             fig = plot_function(mean, pval, pos, neg, self.region_extents)
+    #             if fig:
+    #                 fig.savefig(os.path.join(self.config['plot_dir'], f"beta_forced_{var}_plot.png"))
 
     def _plot_timeseries(self):
         from storypy.evaluate.plot import plot_precipitation_change
@@ -507,7 +522,7 @@ class ESMValProcessor:
         """
         self._process_data()
         combined = self._combine_and_save()
-        self._plot_spatial(combined)
+        # self._plot_spatial(combined)
         return
 
     def process_driver(self):

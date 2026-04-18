@@ -4,7 +4,7 @@ from ._plotting import (
     plot_precipitation_change
 )
 from ._storylines import (
-    create_five_panel_figure,
+    plot_storyline_map,
     create_three_panel_figure,
     create_multi_panel_figure,
     hemispheric_plot,
@@ -19,7 +19,7 @@ __all__ = [
     "create_arc",
     "plot_function",
     "plot_precipitation_change",
-    "create_five_panel_figure",
+    "plot_storyline_map",
     "create_three_panel_figure",
     "create_multi_panel_figure",
     "hemispheric_plot",

@@ -77,6 +77,10 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         # print(f"Longitude: {negatives_model_da['lon'].min().values} to {negatives_model_da['lon'].max().values}")
         # print(f"Latitude: {negatives_model_da['lat'].min().values} to {negatives_model_da['lat'].max().values}")
 
+    import matplotlib as mpl
+    mpl.rcParams['hatch.linewidth'] = 0.5
+    mpl.rcParams['hatch.color'] = 'black'
+
     # Initialize the plot
     fig, ax = plt.subplots(figsize=(15, 20), subplot_kw={'projection': ccrs.PlateCarree()})
     ax.set_extent(extent, crs=ccrs.PlateCarree())
@@ -114,7 +118,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         combined = (positives_model_da + negatives_model_da) == sig
         ax.contourf(
             positives_model_da['lon'], positives_model_da['lat'], combined,
-            levels=[0.5, 1], hatches=['...', ''], colors='none',
+            levels=[0.5, 1], hatches=['.', ''], colors='none',
             transform=ccrs.PlateCarree()
         )
 
