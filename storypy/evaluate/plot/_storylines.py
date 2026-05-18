@@ -247,12 +247,12 @@ def create_multi_panel_figure(
 
     # shared colorbar
     if shared_colorbar and ims:
+        # Add colorbar axes manually: [left, bottom, width, height] in figure fraction
+        cbar_ax = fig.add_axes([0.25, 0.04, 0.5, 0.05])  # ← adjust width (0.5) to make it longer/shorter
         cbar = fig.colorbar(
             ims[0],
-            ax=axs[:nplots],
+            cax=cbar_ax,          # ← use cax instead of ax
             orientation="horizontal",
-            fraction=0.05,
-            pad=0.08,
             ticks=tick_levels
         )
         cbar.set_label(colorbar_label, fontsize=12)
@@ -531,6 +531,54 @@ def hemispheric_plot(data, levels, extent, cmap, title,
     ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='lightblue')
     ax.set_title(title, fontsize=14)
     plt.show()
+
+
+def plot_map(data, levels, extent, cmap, title, colorbar_label='Colorbar Label'):
+    """
+    Plot data with an automatically chosen projection based on the extent.
+
+    Projection selection:
+    - Polar (lat_max > 70 or lat_min < -70): NorthPolarStereo / SouthPolarStereo
+    - Wide longitude span (> 300°) or global: Robinson
+    - Regional box: PlateCarree
+    """
+    lon_min, lon_max, lat_min, lat_max = extent
+    lon_span = lon_max - lon_min
+    lat_span = lat_max - lat_min
+
+    # Choose projection
+    if lat_min >= 20:
+        proj = ccrs.NorthPolarStereo(central_longitude=(lon_min + lon_max) / 2)
+    elif lat_max <= -20:
+        proj = ccrs.SouthPolarStereo(central_longitude=(lon_min + lon_max) / 2)
+    elif lon_span >= 300 or (lon_span >= 150 and lat_span >= 120):
+        proj = ccrs.Robinson(central_longitude=(lon_min + lon_max) / 2)
+    else:
+        proj = ccrs.PlateCarree(central_longitude=(lon_min + lon_max) / 2)
+
+    fig = plt.figure(figsize=(10, 6))
+    ax  = fig.add_subplot(111, projection=proj)
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
+
+    data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+    im = ax.contourf(lon_cyclic, data.lat, data_cyclic,
+                     levels=levels, cmap=cmap,
+                     transform=ccrs.PlateCarree(), extend='both')
+
+    ax.add_feature(cfeature.COASTLINE.with_scale('50m'), linewidth=0.7)
+    ax.add_feature(cfeature.BORDERS, linestyle=':', linewidth=0.5)
+    ax.add_feature(cfeature.LAND, facecolor='lightgray', zorder=0)
+    ax.gridlines(draw_labels=True, linewidth=0.4, color='grey',
+                 linestyle='--', x_inline=False, y_inline=False)
+
+    cbar = fig.colorbar(im, ax=ax, orientation='horizontal',
+                        pad=0.06, shrink=0.7, fraction=0.05)
+    cbar.set_label(colorbar_label, fontsize=9)
+
+    ax.set_title(title, fontsize=12, fontweight='bold')
+    plt.tight_layout()
+    # plt.show()
+    return fig
 
 
 def confidence_ellipse(x ,y, ax, corr,chi_squared=3.21, facecolor='none',**kwargs):

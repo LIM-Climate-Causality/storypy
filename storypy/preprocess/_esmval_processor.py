@@ -259,8 +259,11 @@ class ESMValProcessor:
                             print(f"Warning: GW scalar is {gw_scalar} for alias '{alias}'; skipping.")
                             continue
 
-                        self.ensemble_changes[var].append(change / gw_scalar)
-                        self.time_series_changes[var].append(change_ts / gw_scalar)
+                        norm    = change    / gw_scalar
+                        norm_ts = change_ts / gw_scalar
+                        norm.attrs['member_id'] = alias
+                        self.ensemble_changes[var].append(norm)
+                        self.time_series_changes[var].append(norm_ts)
                     except KeyError as e:
                         print(f"KeyError: {e}. Skipping alias {alias} in dataset {dataset}.")
                         continue
@@ -365,19 +368,6 @@ class ESMValProcessor:
     
     # New adaptation for variant selection strategy
     def _combine_and_save(self):
-        """
-        Combine per-variant target DataArrays into one entry per base model.
-
-        Variant selection strategy is controlled by
-        ``user_config['variant_selection']``:
-
-        - ``'last'``  : last variant alphabetically — replicates
-                        accidental dict-comprehension behaviour exactly.
-        - ``'first'`` : first variant alphabetically (r1i1p1f1 where available)
-                        — most reproducible, matches Zappa & Shepherd 2017.
-        - ``'mean'``  : ensemble mean across all variants — most data-efficient
-                        but reduces inter-model spread.
-        """
         from collections import defaultdict
 
         combined_vars = {}
@@ -388,7 +378,6 @@ class ESMValProcessor:
                 print(f"Warning: no data collected for variable '{var}'")
                 continue
 
-            # Group DataArrays by base model name, preserving insertion order
             groups = defaultdict(list)
             for name, da in zip(self.all_model_names,
                                 self.ensemble_changes[var]):
@@ -397,24 +386,27 @@ class ESMValProcessor:
 
             result_per_model = []
             model_names      = []
+            n_members_list   = []      # ← new
+            member_ids_list  = []      # ← new
 
             for base_model, members in sorted(groups.items()):
 
-                # Sort members alphabetically by alias for reproducibility
                 members_sorted = sorted(members, key=lambda x: x[0])
 
                 if self.variant_selection == 'last':
-                    _, chosen_da = members_sorted[-1]
-                    chosen_name  = members_sorted[-1][0]
+                    chosen_name    = members_sorted[-1][0]
+                    chosen_da      = members_sorted[-1][1]
+                    member_aliases = [chosen_name]             # ← new
 
                 elif self.variant_selection == 'first':
-                    _, chosen_da = members_sorted[0]
-                    chosen_name  = members_sorted[0][0]
+                    chosen_name    = members_sorted[0][0]
+                    chosen_da      = members_sorted[0][1]
+                    member_aliases = [chosen_name]             # ← new
 
                 elif self.variant_selection == 'mean':
-                    das          = [da for _, da in members_sorted]
-                    chosen_da    = xr.concat(das, dim='member').mean(dim='member')
-                    chosen_name  = f"{base_model} ({len(das)} members)"
+                    das            = [da for _, da in members_sorted]
+                    chosen_da      = xr.concat(das, dim='member').mean(dim='member')
+                    member_aliases = [name for name, _ in members_sorted]  # ← new
 
                 else:
                     raise ValueError(
@@ -422,13 +414,21 @@ class ESMValProcessor:
                         f"got '{self.variant_selection}'"
                     )
 
-                if len(members) > 1:
-                    print(f"  {base_model}: {self.variant_selection} → "
-                        f"'{chosen_name}' from {len(members)} variants")
+                # ← new: always defined after the if/elif block
+                n_members      = len(member_aliases)
+                member_ids_str = '|'.join(member_aliases)
+
+                print(f"  {base_model}: {self.variant_selection} → {n_members} member(s)")
 
                 chosen_da = chosen_da.expand_dims(model=[base_model])
+                chosen_da = chosen_da.assign_coords(        # ← new
+                    n_members  = ('model', [n_members]),
+                    member_ids = ('model', [member_ids_str]),
+                )
                 result_per_model.append(chosen_da)
                 model_names.append(base_model)
+                n_members_list.append(n_members)            # ← new
+                member_ids_list.append(member_ids_str)      # ← new
 
             combined_vars[var] = xr.concat(
                 result_per_model, dim='model',

@@ -38,6 +38,7 @@ Typical workflow
 import os
 import warnings
 import fnmatch
+from numpy import var
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months
@@ -138,6 +139,7 @@ class ModelDataPreprocessor:
         self.ensemble_changes = {var: [] for var in self.var_names}
         self.time_series_changes = {var: [] for var in self.var_names}
         self.driver_data = {var: [] for var in self.driver_vars}
+        self.member_ids_per_model = {}
 
     def _compute_bounding_box(self):
         """
@@ -179,8 +181,19 @@ class ModelDataPreprocessor:
                 print(f"Directory not found for variable {var}: {path}")
                 continue
             files = [f for f in os.listdir(path) if f.endswith('.nc')]
-            # Extract full model+member name (e.g., CNRM-ESM2-1_r15i1p1f2)
-            model_members = {f.split('_')[2] + '_' + f.split('_')[3] for f in files}
+            model_members = set()
+            for f in files:
+                parts = f.split('_')
+                if len(parts) < 6:
+                    continue
+                experiment = parts[3]
+                # Only include standard historical and target scenario
+                # avoids hist-aer, hist-GHG, amip, piClim etc.
+                if experiment not in ('historical', self.exp_name):
+                    continue
+                model   = parts[2]   # e.g. ACCESS-CM2
+                variant = parts[4]   # e.g. r1i1p1f1 — was wrongly [3] before
+                model_members.add(f"{model}_{variant}")
             model_sets[var] = model_members
 
         if model_sets:
@@ -216,6 +229,7 @@ class ModelDataPreprocessor:
 
         for m in common_models:
             ens_hist, ens_scen, ens_hist_gw, ens_scen_gw = [], [], [], []
+            hist_variants = []
 
             for f in files:
                 if m not in f:
@@ -228,6 +242,7 @@ class ModelDataPreprocessor:
                 if fnmatch.fnmatch(f, f"{var}_*_{m}_*historical*.nc"):
                     try:
                         ens_hist.append(xr.open_dataset(var_file_path))
+                        hist_variants.append(f.split('_')[4])
                     except FileNotFoundError:
                         print(f"Missing historical file skipped: {var_file_path}")
                         continue
@@ -261,45 +276,48 @@ class ModelDataPreprocessor:
             if ens_hist_gw and ens_scen_gw:
                 gh = xr.concat(ens_hist_gw, dim='ensemble')
                 gs = xr.concat(ens_scen_gw, dim='ensemble')
-                gw = xr.concat([gh.mean('ensemble'), gs.mean('ensemble')], dim='time').mean(('lat', 'lon'))
-                self.target['gw'] = gw
+                gw_combined  = xr.concat(
+                    [gh.mean('ensemble'), gs.mean('ensemble')], dim='time'
+                )['tas']
+                lat_weights  = np.cos(np.deg2rad(gw_combined['lat']))
+                gw_weighted  = gw_combined.weighted(lat_weights).mean(('lat', 'lon'))
+                self.target['gw'] = gw_weighted.to_dataset(name='tas')
 
             try:
-                tv = seasonal_data_months(self.target[var], list(self.season))
+                tv = seasonal_data_months(self.target[var][var], list(self.season))
                 if var == 'pr':
-                    tv *= 86400
+                    tv = tv * 86400
 
                 ch = clim_change(tv, period1=self.period1, period2=self.period2,
-                                region_method=self.region_method, box=self.box,
-                                region_id=self.region_id, season=self.season,
-                                preserve_time_series=False)
+                                season=self.season, preserve_time_series=False)
 
                 ts = clim_change(tv, period1=self.period1, period2=self.period2,
-                                region_method=self.region_method, box=self.box,
-                                region_id=self.region_id, season=self.season,
-                                preserve_time_series=True)
+                                season=self.season, preserve_time_series=True)
 
-                sg = seasonal_data_months(self.target['gw'], list(self.season))
-                has_sp = set(('lat', 'lon')).issubset(sg.dims)
+                sg = seasonal_data_months(self.target['gw']['tas'], list(self.season))
+                gwc = clim_change(
+                    sg,
+                    period1=self.period1,
+                    period2=self.period2,
+                    season=self.season,
+                    preserve_time_series=False
+                )
+                gv = float(gwc.values)
 
-                if has_sp:
-                    gwc = clim_change(sg, period1=self.period1, period2=self.period2,
-                                    region_method=self.region_method, box=self.box,
-                                    region_id=self.region_id, season=self.season,
-                                    preserve_time_series=False)
-                else:
-                    gwc = clim_change(sg, period1=self.period1, period2=self.period2,
-                                    season=self.season, preserve_time_series=False)
+                if gv == 0.0 or np.isnan(gv):
+                    print(f"Warning: GW scalar is {gv} for model {m}, skipping.")
+                    continue
 
-                if not has_sp:
-                    gwc = gwc.expand_dims({'lat': ch['lat'], 'lon': ch['lon']})
-
-                gv = gwc['tas']
-                norm = (ch / gv).expand_dims({'model': [m]})
+                # ch and ts are Datasets from clim_change — extract DataArray for target var
+                norm    = (ch / gv).expand_dims({'model': [m]})
                 norm_ts = (ts / gv).expand_dims({'model': [m]})
 
-                self.ensemble_changes[var].append(norm)
-                self.time_series_changes[var].append(norm_ts)
+                self.member_ids_per_model[m] = sorted([
+                    f"{m}_{v}" for v in hist_variants
+                ])
+                
+                self.ensemble_changes[var].append(norm.to_dataset(name=var))
+                self.time_series_changes[var].append(norm_ts.to_dataset(name=var))
 
             except KeyError as e:
                 print(f"KeyError: {e}. Skipping variable {var}.")
@@ -351,18 +369,37 @@ class ModelDataPreprocessor:
             combined = xr.concat([hist.mean('ensemble'), scen.mean('ensemble')], dim='time')
 
             try:
-                seasonal = seasonal_data_months(combined, list(driver_season))
+                # Extract DataArray before seasonal processing
+                seasonal = seasonal_data_months(
+                    combined[variable_name], list(driver_season)
+                )
                 if variable_name == 'pr':
-                    seasonal *= 86400
-                delta = clim_change(seasonal,
-                                    period1=driver_period1,
-                                    period2=driver_period2,
-                                    region_method=self.region_method,
-                                    box=driver_box,
-                                    region_id=self.region_id,
-                                    season=driver_season,
-                                    preserve_time_series=False)
-                da = delta[variable_name]
+                    seasonal = seasonal * 86400
+
+                if short_name == 'gw':
+                    # GW uses global cosine-weighted mean — no regional box
+                    lat_weights = np.cos(np.deg2rad(seasonal['lat']))
+                    gw_global   = seasonal.weighted(lat_weights).mean(('lat', 'lon'))
+                    da = clim_change(
+                        gw_global,
+                        period1=driver_period1,
+                        period2=driver_period2,
+                        season=driver_season,
+                        preserve_time_series=False
+                    )
+                else:
+                    # Standard driver — apply regional box
+                    da = clim_change(
+                        seasonal,
+                        period1=driver_period1,
+                        period2=driver_period2,
+                        region_method=self.region_method,
+                        box=driver_box,
+                        region_id=self.region_id,
+                        season=driver_season,
+                        preserve_time_series=False
+                    )
+
                 if 'model' not in da.dims:
                     da = da.expand_dims({'model': [model]})
                 da.name = short_name
@@ -416,11 +453,33 @@ class ModelDataPreprocessor:
 
             data = xr.concat(arrays, dim='model', coords='minimal', compat='override')
             data = data.assign_coords(model=('model', model_names))
-            combined[var] = data
+            base_names   = [m.rsplit('_r', 1)[0] if '_r' in m else m
+                            for m in model_names]
+            unique_bases = list(dict.fromkeys(base_names))
 
-        out = os.path.join(self.work_dir, 'target.nc')
-        combined.to_netcdf(out)
-        print(f"Saved all model ensemble changes to {out}")
+            averaged       = []
+            n_members_list = []
+            member_ids_list = []
+
+            for base in unique_bases:
+                idx         = [i for i, b in enumerate(base_names) if b == base]
+                members     = [model_names[i] for i in idx]
+                averaged.append(data.isel(model=idx).mean('model'))
+                n_members_list.append(len(members))
+                stored = self.member_ids_per_model.get(base, [base])
+                member_ids_list.append('|'.join(stored))
+
+            data_averaged = xr.concat(averaged, dim='model')
+            data_averaged = data_averaged.assign_coords(
+                model      = ('model', unique_bases),
+                n_members  = ('model', n_members_list),
+                member_ids = ('model', member_ids_list),
+            )
+            combined[var] = data_averaged
+
+            out = os.path.join(self.work_dir, f'target_{var}.nc')
+            combined[[var]].to_netcdf(out)
+            print(f"Saved target for {var} to {out}")
         return combined
 
     

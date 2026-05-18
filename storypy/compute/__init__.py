@@ -8,6 +8,7 @@ from ._compute_driver import (
     _select_one_file_per_var
 )
 from ._mlr import run_regression
+from ._stippling import StipplingComputer
 from ._regres import (
     spatial_MLR,
     stand,

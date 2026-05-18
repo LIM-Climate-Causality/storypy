@@ -199,7 +199,7 @@ def compute_drivers(driver_config):
 
         # For each short_name, check if it's in the file and process
         for short_name in short_names:
-            if short_name not in os.path.basename(f):
+            if os.path.basename(f) != f'remote_driver_{short_name}.nc':
                 continue  # Skip if the file does not match the variable
 
             if short_name not in ds:
@@ -212,13 +212,22 @@ def compute_drivers(driver_config):
                 model_set.add(model)
 
                 try:
-                    # Extract the mean value of the variable for the model
-                    val = ds[short_name].sel(model=model).mean().item()
-                    
-                    # Get the global warming value for the model
-                    gw_val = gw_vals.sel(model=model).mean().item()
-                    
-                    # Scale the value by the global warming value, if not 0
+                    da_model = ds[short_name].sel(model=model)
+                    # Remove any residual time dimension
+                    if 'time' in da_model.dims:
+                        da_model = da_model.mean('time')
+                    # Apply cosine-latitude weighted spatial mean if spatial dims present
+                    if 'lat' in da_model.dims and 'lon' in da_model.dims:
+                        weights  = np.cos(np.deg2rad(da_model['lat']))
+                        da_model = da_model.weighted(weights).mean(('lat', 'lon'))
+                    val = float(da_model.item())
+
+                    # GW — same treatment
+                    gw_model = gw_vals.sel(model=model)
+                    if 'time' in gw_model.dims:
+                        gw_model = gw_model.mean('time')
+                    gw_val   = float(gw_model.item())
+
                     scaled_val = val / gw_val if gw_val != 0 else np.nan
 
                 except Exception as e:
@@ -243,7 +252,7 @@ def compute_drivers(driver_config):
     df_scaled = pd.DataFrame(data_scaled, index=common_models)
 
     # Standardize the scaled data (z-score normalization)
-    df_standardized = df_scaled.apply(stand_numpy, axis=0)
+    df_standardized = df_scaled.apply(stand_pandas, axis=0)
 
     # drivers_ds = xr.Dataset(
     #     {sn: ("model", df_raw[sn].values.astype(float)) for sn in short_names},
