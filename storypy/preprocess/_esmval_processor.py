@@ -20,7 +20,7 @@ Example
 -------
 >>> from storypy.preprocess._esmval_processor import parse_config, ESMValProcessor
 >>> cfg = parse_config("config.yml")
->>> user_cfg = {
+>>> main_cfg = {
 ...     "work_dir": "./output",
 ...     "plot_dir": "./output/plots",
 ...     "region_method": "box",
@@ -32,7 +32,7 @@ Example
 ...     "region_extents": [[-10, 10, 0, 50]],
 ...     "var_name": ["pr"],
 ... }
->>> processor = ESMValProcessor(cfg, user_cfg)
+>>> processor = ESMValProcessor(cfg, main_cfg)
 >>> processor.process_var()      # process target variable(s)
 >>> processor.process_driver()   # process driver variables
 """
@@ -43,7 +43,6 @@ import warnings
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months, test_mean_significance
-# from storypy.evaluate.plot import plot_precipitation_change, plot_function
 from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
 from esmvaltool.diag_scripts.shared._base import _get_input_data_files
 
@@ -89,7 +88,7 @@ class ESMValProcessor:
     ----------
     config : dict
         Parsed ESMValTool configuration dictionary (see :func:`parse_config`).
-    user_config : dict
+    main_config : dict
         User-defined configuration dictionary controlling variable names,
         time periods, spatial regions, output paths, and plotting options.
     driver_config : dict, optional
@@ -125,7 +124,7 @@ class ESMValProcessor:
     >>> proc.process_var()
     >>> proc.process_driver()
     """
-    def __init__(self, config, user_config, driver_config=None):
+    def __init__(self, config, main_config, driver_config=None):
         """
         Initialize the ESMValProcessor instance.
 
@@ -136,17 +135,17 @@ class ESMValProcessor:
         ----------
         config : dict
             ESMValTool configuration from :func:`parse_config`.
-        user_config : dict
+        main_config : dict
             User-defined processing options.
         driver_config : dict, optional
             Overrides for driver variable settings.
         """
         self.config = config
-        self.user_config = user_config
+        self.main_config = main_config
         xr.set_options(keep_attrs=True)
         self._compute_bounding_box()
         # Unpack frequently used config values
-        uc = self.user_config
+        uc = self.main_config
         # self.data_dir = uc['data_dir']
         self.work_dir = uc['work_dir']
         self.plot_dir = uc['plot_dir']
@@ -160,7 +159,7 @@ class ESMValProcessor:
         self.var_names = uc["var_name"]
         self.titles = uc.get("titles", [])
         self.variant_selection = uc.get("variant_selection", "mean")
-         # driver configuration (fall back to user_config values)
+         # driver configuration (fall back to main_config values)
         self.dc = driver_config or {}
         self.driver_vars = self.dc.get('var_name', self.var_names)
         self.driver_short_names = self.dc.get('short_name', self.driver_vars)
@@ -184,12 +183,12 @@ class ESMValProcessor:
 
     def _compute_bounding_box(self):
         # Calculate and expand bounding box by 5 degrees
-        extents = self.user_config['region_extents']
+        extents = self.main_config['region_extents']
         all_lat_min = min(r[0] for r in extents)
         all_lat_max = max(r[1] for r in extents)
         all_lon_min = min(r[2] for r in extents)
         all_lon_max = max(r[3] for r in extents)
-        self.user_config['box'] = {
+        self.main_config['box'] = {
             'lat_min': max(all_lat_min - 5, -90),
             'lat_max': min(all_lat_max + 5, 90),
             'lon_min': all_lon_min - 5 if all_lon_min - 5 >= -180 else -180,
@@ -360,7 +359,7 @@ class ESMValProcessor:
     #         )
 
     #     combined_ds = xr.Dataset(combined_vars)
-    #     out_file = os.path.join(self.user_config['work_dir'], f'target_{var}.nc')
+    #     out_file = os.path.join(self.main_config['work_dir'], f'target_{var}.nc')
     #     combined_ds.to_netcdf(out_file)
     #     print(f"Saved {len(model_names)} base models to {out_file}")
     #     print(f"Models: {sorted(model_names)}")
@@ -437,7 +436,7 @@ class ESMValProcessor:
 
         combined_ds = xr.Dataset(combined_vars)
         out_file    = os.path.join(
-            self.user_config['work_dir'], f'target_{var}.nc'
+            self.main_config['work_dir'], f'target_{var}.nc'
         )
         combined_ds.to_netcdf(out_file)
         print(f"\nSaved {len(model_names)} models to {out_file} "
@@ -462,7 +461,7 @@ class ESMValProcessor:
         for var in self.driver_vars:
             combined_driver_ds[var] = combined_driver_ds[var].assign_coords(model=('model', models))
 
-        out_file = os.path.join(self.user_config['work_dir'], f'driver_{var}.nc')
+        out_file = os.path.join(self.main_config['work_dir'], f'driver_{var}.nc')
         combined_driver_ds.to_netcdf(out_file)
         print(f"Saved all driver variable changes to {out_file}")
         return combined_driver_ds
@@ -500,14 +499,14 @@ class ESMValProcessor:
                 years=years, var_name=var
             )
             if fig:
-                fig.savefig(os.path.join(self.user_config['plot_dir'], f"time_series_plot_{var}.png"))
+                fig.savefig(os.path.join(self.main_config['plot_dir'], f"time_series_plot_{var}.png"))
 
     def process_var(self):
         """
         Process target variables and compute climatological changes.
 
         This method loops through all datasets and variables defined in
-        ``user_config``, computes ensemble-mean climatological changes
+        ``main_config``, computes ensemble-mean climatological changes
         between the two defined time periods, saves the results as
         NetCDF.
 
@@ -530,7 +529,7 @@ class ESMValProcessor:
         Process and combine driver (remote forcing) variables.
 
         This method processes all driver variables specified in
-        ``driver_config`` or ``user_config``. It computes climatological
+        ``driver_config`` or ``main_config``. It computes climatological
         changes, aggregates across models, saves the results as NetCDF,
         and returns the combined dataset.
 

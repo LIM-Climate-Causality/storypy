@@ -7,10 +7,10 @@ from ._compute_driver import (
     _build_drivers_dataset,
     _select_one_file_per_var
 )
-from ._mlr import run_regression
+from ._mlr import compute_regression
 from ._stippling import StipplingComputer
 from ._regres import (
-    spatial_MLR,
+    SpatialRegression,
     stand,
     stand_detr,
     filtro,

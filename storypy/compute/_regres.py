@@ -2,16 +2,16 @@
 storypy.compute._regres
 =======================
 
-Low-level utilities for spatial multiple linear regression (MLR).
+Low-level utilities for spatial regression (SR).
 
-The :class:`spatial_MLR` class wraps a statsmodels OLS regression
+The :class:`SpatialRegression` class wraps a statsmodels OLS regression
 fitted at each gridpoint of a target xarray object, using model-wise
 driver indices as predictors. Additional helpers support detrending,
 standardisation, and diagnostic plotting.
 
 This module is typically not used directly by end users; instead they
-call :func:`storypy.compute._mlr.run_regression`, which drives the
-workflow and uses :class:`spatial_MLR` internally.
+call :func:`storypy.compute._mlr.compute_regression`, which drives the
+workflow and uses :class:`SpatialRegression` internally.
 """
 
 import xarray as xr
@@ -32,7 +32,7 @@ import matplotlib.path as mpath
 import matplotlib as mpl
 import random
 
-class spatial_MLR(object):
+class SpatialRegression(object):
     """
     Spatial multiple linear regression over model ensembles.
 
@@ -42,10 +42,10 @@ class spatial_MLR(object):
 
     Typical usage
     -------------
-    >>> from storypy.compute._regres import spatial_MLR
-    >>> MLR = spatial_MLR()
-    >>> MLR.regression_data(target, regressors, regressor_names)
-    >>> MLR.perform_regression("./out", "pr")  # doctest: +SKIP
+    >>> from storypy.compute._regres import SpatialRegression
+    >>> SR = SpatialRegression()
+    >>> SR.regression_data(target, regressors, regressor_names)
+    >>> SR.perform_regression("./out", "pr")  # doctest: +SKIP
 
     Attributes
     ----------

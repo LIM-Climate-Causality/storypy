@@ -12,37 +12,97 @@ import os
 from matplotlib.ticker import FuncFormatter
 import math
 
-def storyline_evaluation(main_config, target, drivers, storyline_coefficient, gw_level=1):
-    # Load regression coefficient dataset
-    target_path = os.path.join(main_config["work_dir"], "regression_output", target, "regression_coefficients.nc")
-    if target == 'pr':
-        data = xr.open_dataset(target_path)# * 86400  # Convert to mm/day
-    else:
-        data = xr.open_dataset(target_path)
+def univariate_dist(df_stand, driver, confidence_level):
+    """
+    Estimate the storyline coefficient for a driver at a given confidence level.
 
-    # Build the storylines
+    Following Zappa & Shepherd (2017) and Monerie et al. (2023), the storyline
+    value is the quantile of the standardised driver distribution across models.
+
+    Parameters
+    ----------
+    df_stand : pandas.DataFrame
+        Standardised driver indices, models as index, drivers as columns.
+    driver : str
+        Driver name, e.g. 'ta', 'spv', 'pw'.
+    confidence_level : float
+        Value in [0, 1]. Use 0.9 for high-end, 0.1 for low-end.
+
+    Returns
+    -------
+    float
+        Standardised driver value at the given confidence level.
+    """
+    if driver not in df_stand.columns:
+        raise ValueError(
+            f"Driver '{driver}' not found. "
+            f"Available: {df_stand.columns.tolist()}"
+        )
+    if not 0 <= confidence_level <= 1:
+        raise ValueError(
+            f"confidence_level must be between 0 and 1, got {confidence_level}"
+        )
+    return float(df_stand[driver].quantile(confidence_level))
+
+from scipy.stats import chi2
+
+def bivariate_dist(confidence_level=0.8, n_drivers=2):
+    """
+    Compute the storyline coefficient following Zappa & Shepherd (2017).
+    Returns the radius of the confidence ellipse at the given confidence
+    level for a bivariate normal distribution.
+
+    For confidence_level=0.8, n_drivers=2: returns 1.2649 ≈ 1.26
+    """
+    return float(np.sqrt(chi2.ppf(confidence_level, df=n_drivers) / n_drivers))
+
+print(bivariate_dist(0.8, 2))
+
+def storyline_evaluation(main_config, target, drivers,
+                         storyline_coefficient=None,
+                         coeffs_high=None,
+                         coeffs_low=None,
+                         gw_level=1):
+
+    data = xr.open_dataset(
+        os.path.join(main_config["work_dir"], "regression_output",
+                     target, "regression_coefficients.nc")
+    )
+
+    # Resolve which approach to use for the storyline coefficients
+    if coeffs_high is not None and coeffs_low is not None:
+        # Univariate distribution which uses a data-driven approach, different value per driver
+        ch = coeffs_high
+        cl = coeffs_low
+    elif storyline_coefficient is not None:
+        # Bivariate distribution which uses a fixed value for all drivers (e.g., Zappa & Shepherd)
+        ch = {d:  storyline_coefficient for d in drivers}
+        cl = {d: -storyline_coefficient for d in drivers}
+    else:
+        raise ValueError(
+            "Provide either storyline_coefficient or both coeffs_high and coeffs_low."
+        )
+
+    d0, d1 = drivers[0], drivers[1]
     storylines = [
-        data['MEM'] + storyline_coefficient * data[drivers[1]] - storyline_coefficient * data[drivers[0]],
-        data['MEM'] + storyline_coefficient * data[drivers[1]] + storyline_coefficient * data[drivers[0]],
-        data['MEM'] - storyline_coefficient * data[drivers[1]] - storyline_coefficient * data[drivers[0]],
-        data['MEM'] - storyline_coefficient * data[drivers[1]] + storyline_coefficient * data[drivers[0]],
+        data['MEM'] + ch[d1] * data[d1] + cl[d0] * data[d0],
+        data['MEM'] + ch[d1] * data[d1] + ch[d0] * data[d0],
+        data['MEM'] + cl[d1] * data[d1] + cl[d0] * data[d0],
+        data['MEM'] + cl[d1] * data[d1] + ch[d0] * data[d0],
         data['MEM']
     ]
 
-    # Create descriptive names
     storyline_labels = [
-        f"high {drivers[1]} low {drivers[0]}",
-        f"high {drivers[1]} high {drivers[0]}",
-        f"low {drivers[1]} low {drivers[0]}",
-        f"low {drivers[1]} high {drivers[0]}",
+        f"high {d1} low {d0}",
+        f"high {d1} high {d0}",
+        f"low {d1} low {d0}",
+        f"low {d1} high {d0}",
         "MEM"
     ]
 
-    # Stack into a DataArray
     storyline_da = xr.concat(storylines, dim="storyline") * gw_level
     storyline_da["storyline"] = storyline_labels
     storyline_da.name = "storylines"
-
     return storyline_da, storyline_labels
 
 def regression_coefficient(main_config, target, drivers, storyline_coefficient=None, gw_level=1):
@@ -64,7 +124,7 @@ def regression_coefficient(main_config, target, drivers, storyline_coefficient=N
     data = xr.open_dataset(target_path)
 
     if target == 'pr':
-        data = data# * 86400  # Convert from kg/m2/s to mm/day
+        data = data # * 86400  # Convert from kg/m2/s to mm/day
 
     # Ensure all requested drivers exist
     missing = [drv for drv in drivers if drv not in data]
@@ -106,60 +166,52 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
     return color_levels, tick_levels
 
 
-def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5), mask_range=(-0.02, 0.02)):
-    """
-    Creates a figure with three panels in a row.
+# # Code no longer in use--------------------------------------------------------------------
+# def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5), mask_range=(-0.02, 0.02)):
+#     """
+#     Creates a figure with three panels in a row.
     
-    Parameters:
-    - data_list: List of 2D arrays or datasets to plot.
-    - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
-    - levels_list: List of levels for contour plots.
-    - cmaps_list: List of colormap names for each map.
-    - titles: Titles for each subplot.
-    - figsize: Size of the overall figure (default is (15, 5)).
-    """
+#     Parameters:
+#     - data_list: List of 2D arrays or datasets to plot.
+#     - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
+#     - levels_list: List of levels for contour plots.
+#     - cmaps_list: List of colormap names for each map.
+#     - titles: Titles for each subplot.
+#     - figsize: Size of the overall figure (default is (15, 5)).
+#     """
     
-    # Create the figure and use a specific projection for Cartopy maps
-    fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
-                            subplot_kw={'projection': ccrs.PlateCarree()})
+#     # Create the figure and use a specific projection for Cartopy maps
+#     fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
+#                             subplot_kw={'projection': ccrs.PlateCarree()})
     
-    # Iterate through each map and plot it
-    for i, ax in enumerate(axs):
-        # Set the extent for each map using the provided extents
-        ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
+#     # Iterate through each map and plot it
+#     for i, ax in enumerate(axs):
+#         # Set the extent for each map using the provided extents
+#         ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
         
-        # Add coastlines and gridlines
-        ax.coastlines()
-        ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
+#         # Add coastlines and gridlines
+#         ax.coastlines()
+#         ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
 
-        data_cyclic, lon_cyclic = add_cyclic_point(data_list[i].values, coord=data_list[i].lon)
+#         data_cyclic, lon_cyclic = add_cyclic_point(data_list[i].values, coord=data_list[i].lon)
 
-        # Mask values close to zero
-        masked_data = np.ma.masked_inside(data_cyclic, mask_range[0], mask_range[1])
+#         # Mask values close to zero
+#         masked_data = np.ma.masked_inside(data_cyclic, mask_range[0], mask_range[1])
         
-        # Plot the data (assuming `data_list` contains 2D arrays or DataArrays)
-        norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=levels_list[i][0], vmax=levels_list[i][-1])
-        im = ax.contourf(lon_cyclic, data_list[i].lat, masked_data,
-                         levels=levels_list[i], cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
+#         # Plot the data (assuming `data_list` contains 2D arrays or DataArrays)
+#         norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=levels_list[i][0], vmax=levels_list[i][-1])
+#         im = ax.contourf(lon_cyclic, data_list[i].lat, masked_data,
+#                          levels=levels_list[i], cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
         
-        # Set the title for each subplot
-        ax.set_title(titles[i], fontsize=12)
+#         # Set the title for each subplot
+#         ax.set_title(titles[i], fontsize=12)
     
-    # Add a single colorbar at the bottom of the plots
-    cbar = fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
-    cbar.set_label(colorbar_label)
+#     # Add a single colorbar at the bottom of the plots
+#     cbar = fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
+#     cbar.set_label(colorbar_label)
     
-    # Show the figure
-    plt.show()
-
-import math
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.ticker import FuncFormatter
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-from cartopy.util import add_cyclic_point
+#     # Show the figure
+#     plt.show()
 
 def create_multi_panel_figure(
     data_list,
@@ -251,7 +303,7 @@ def create_multi_panel_figure(
         cbar_ax = fig.add_axes([0.25, 0.04, 0.5, 0.05])  # ← adjust width (0.5) to make it longer/shorter
         cbar = fig.colorbar(
             ims[0],
-            cax=cbar_ax,          # ← use cax instead of ax
+            cax=cbar_ax,
             orientation="horizontal",
             ticks=tick_levels
         )
@@ -261,7 +313,7 @@ def create_multi_panel_figure(
 
     plt.show()
 
-
+# # Code no longer in use--------------------------------------------------------------------
 # def create_five_panel_figure(map_data, extents, levels, colormaps, titles, colorbar_label='Colorbar Label', white_range=(-0.05, 0.05), mask_range=(-0.05, 0.05)):
 #     """
 #     Creates a figure with five panels: one in the center and four around it (at the corners).
@@ -418,15 +470,6 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     plt.show()
 '''
 
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import matplotlib.gridspec as gridspec
-from cartopy import crs as ccrs, feature as cfeature
-from cartopy.util import add_cyclic_point
-import numpy as np
-from matplotlib.ticker import FuncFormatter
-import math
-
 def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                               colorbar_label='Colorbar Label',
                               white_pct=0.05):
@@ -498,39 +541,38 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
     plt.show()
     return fig
 
+# # Code no longer in use--------------------------------------------------------------------
+# def hemispheric_plot(data, levels, extent, cmap, title,
+#               central_longitude=0, central_latitude=90, colorbar_label='Colorbar Label'):
+#     """
+#     Plot data using a stereographic projection.
 
-
-def hemispheric_plot(data, levels, extent, cmap, title,
-              central_longitude=0, central_latitude=90, colorbar_label='Colorbar Label'):
-    """
-    Plot data using a stereographic projection.
-
-    Args:
-    - data (xarray.DataArray): The data to plot.
-    - levels (np.ndarray): Contour levels for the plot.
-    - cmap (str): Colormap for the plot.
-    - title (str): Title of the plot.
-    - extent (list): Geographic extent for the plot [lon_min, lon_max, lat_min, lat_max].
-    - projection (ccrs.Projection): Cartopy projection for the plot.
-    - central_longitude (float): Central longitude for the Stereographic projection.
-    - central_latitude (float): Central latitude for the Stereographic projection.
-    - colorbar_label (str): Label for the colorbar.
-    """
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection=ccrs.Stereographic(central_longitude=central_longitude, central_latitude=central_latitude))
-    ax.set_extent(extent, crs=ccrs.PlateCarree())
-    data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
-    im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=levels, cmap=cmap, transform=ccrs.PlateCarree())
-    cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
-    cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
-    cbar.set_label(colorbar_label)
-    ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
-    ax.add_feature(cfeature.BORDERS, linestyle=':', linewidth=0.5)
-    ax.gridlines(draw_labels=True)
-    ax.add_feature(cfeature.LAND, edgecolor='black', facecolor='lightgray')
-    ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='lightblue')
-    ax.set_title(title, fontsize=14)
-    plt.show()
+#     Args:
+#     - data (xarray.DataArray): The data to plot.
+#     - levels (np.ndarray): Contour levels for the plot.
+#     - cmap (str): Colormap for the plot.
+#     - title (str): Title of the plot.
+#     - extent (list): Geographic extent for the plot [lon_min, lon_max, lat_min, lat_max].
+#     - projection (ccrs.Projection): Cartopy projection for the plot.
+#     - central_longitude (float): Central longitude for the Stereographic projection.
+#     - central_latitude (float): Central latitude for the Stereographic projection.
+#     - colorbar_label (str): Label for the colorbar.
+#     """
+#     fig = plt.figure(figsize=(8, 8))
+#     ax = fig.add_subplot(111, projection=ccrs.Stereographic(central_longitude=central_longitude, central_latitude=central_latitude))
+#     ax.set_extent(extent, crs=ccrs.PlateCarree())
+#     data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
+#     im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=levels, cmap=cmap, transform=ccrs.PlateCarree())
+#     cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])  # [left, bottom, width, height]
+#     cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
+#     cbar.set_label(colorbar_label)
+#     ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
+#     ax.add_feature(cfeature.BORDERS, linestyle=':', linewidth=0.5)
+#     ax.gridlines(draw_labels=True)
+#     ax.add_feature(cfeature.LAND, edgecolor='black', facecolor='lightgray')
+#     ax.add_feature(cfeature.LAKES, edgecolor='black', facecolor='lightblue')
+#     ax.set_title(title, fontsize=14)
+#     plt.show()
 
 
 def plot_map(data, levels, extent, cmap, title, colorbar_label='Colorbar Label'):

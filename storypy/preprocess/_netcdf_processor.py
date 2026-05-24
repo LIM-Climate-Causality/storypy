@@ -14,7 +14,7 @@ This module provides :class:`ModelDataPreprocessor`, a high-level helper to:
 Typical workflow
 ----------------
 >>> from storypy.preprocess._netcdf_processor import ModelDataPreprocessor
->>> user_cfg = {
+>>> main_cfg = {
 ...     "var_name": ["pr"],
 ...     "data_dir": "/path/to/cmip6/",
 ...     "work_dir": "./out",
@@ -30,7 +30,7 @@ Typical workflow
 ...     "season": ["DJF"],
 ...     "region_extents": [[-10, 10, 0, 50]],
 ... }
->>> proc = ModelDataPreprocessor(user_cfg)
+>>> proc = ModelDataPreprocessor(main_cfg)
 >>> proc.process_var()     # compute normalized changes for target variables
 >>> proc.process_driver()  # compute driver variables and save per-driver files
 """
@@ -56,7 +56,7 @@ class ModelDataPreprocessor:
 
     Parameters
     ----------
-    user_config : dict
+    main_config : dict
         Main processing configuration. Expected keys include:
         ``var_name`` (list of str), ``data_dir``, ``work_dir``, ``plot_dir``,
         ``exp_name``, ``freq``, ``grid``, ``region_method``, ``box``,
@@ -88,7 +88,7 @@ class ModelDataPreprocessor:
         Alternative processor that uses ESMValTool metadata instead of local discovery.
     """
 
-    def __init__(self, user_config, driver_config=None):
+    def __init__(self, main_config, driver_config=None):
         """
         Initialize the preprocessor and unpack configuration.
 
@@ -97,13 +97,13 @@ class ModelDataPreprocessor:
 
         Parameters
         ----------
-        user_config : dict
+        main_config : dict
             User-defined processing options.
         driver_config : dict, optional
             Overrides for driver variable settings..
         """
         # main configuration
-        self.uc = user_config
+        self.uc = main_config
         xr.set_options(keep_attrs=True)
         self._compute_bounding_box()
         # unpack config
@@ -122,7 +122,7 @@ class ModelDataPreprocessor:
         self.region_id = uc['region_id']
         self.season = uc['season']
         self.region_extents = uc['region_extents']
-        # driver configuration (fall back to user_config values)
+        # driver configuration (fall back to main_config values)
         self.dc = driver_config or {}
         self.driver_vars = self.dc.get('var_name', self.var_names)
         self.driver_short_names = self.dc.get('short_name', self.driver_vars)

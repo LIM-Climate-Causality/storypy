@@ -2,15 +2,15 @@
 storypy.compute._mlr
 ====================
 
-High-level interface for running spatial multiple linear regression (MLR).
+High-level interface for running spatial multiple linear regression (SR).
 
-This module provides :func:`run_regression`, which ties together:
+This module provides :func:`compute_regression`, which ties together:
 
 * target fields from a NetCDF file (``target_<var>.nc``), and
 * standardized remote drivers from a CSV file
   (``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``),
 
-and runs a spatial MLR via :class:`storypy.compute._regres.spatial_MLR`.
+and runs a spatial regression SR via :class:`storypy.compute._regres.SpatialRegression`.
 
 Typical workflow
 ----------------
@@ -18,28 +18,28 @@ Typical workflow
    :class:`storypy.preprocess.ModelDataPreprocessor`.
 2. Prepare standardized driver indices with
    :func:`storypy.compute._compute_driver.compute_drivers_from_netcdf`.
-3. Call :func:`run_regression` with an ESMValTool-like ``config`` dict.
+3. Call :func:`compute_regression` with an ESMValTool-like ``config`` dict.
 
 Example
 -------
->>> from storypy.compute._mlr import run_regression
+>>> from storypy.compute._mlr import compute_regression
 >>> config = {
 ...     "work_dir": "./output",
 ...     "target_variable": ["pr"],
 ... }
->>> files = run_regression(config)
+>>> files = compute_regression(config)
 >>> files  # doctest: +SKIP
 ['./output/regression_output/pr/regression_coefficients.nc', ...]
 """
 
-# from ._regres import spatial_MLR
+# from ._regres import SpatialRegression
 from storypy.utils import xr, pd
 import os
 
 
-# def run_regression(config: dict) -> list[str]:
+# def compute_regression(config: dict) -> list[str]:
 #     """
-#     Run spatial multiple linear regression (MLR) for multiple target variables using NetCDF and CSV data.
+#     Run spatial multiple linear regression (SR) for multiple target variables using NetCDF and CSV data.
 
 #     Parameters:
 #         config (dict): Configuration with keys like 'work_dir'.
@@ -67,8 +67,8 @@ import os
 #     regressors_aligned = regressors.loc[common_models]
 #     regressor_names = regressors_aligned.columns.insert(0, 'MEM')
 
-#     MLR = spatial_MLR()
-#     MLR.regression_data(None, regressors_aligned, regressor_names)
+#     SR = SpatialRegression()
+#     SR.regression_data(None, regressors_aligned, regressor_names)
 
 #     output_path = os.path.join(config["work_dir"], 'regression_output')
 #     os.makedirs(output_path, exist_ok=True)
@@ -81,29 +81,29 @@ import os
 #             continue
 
 #         target = ds_subset[var]
-#         MLR = spatial_MLR()
-#         MLR.regression_data(target, regressors_aligned, regressor_names)
+#         SR = SpatialRegression()
+#         SR.regression_data(target, regressors_aligned, regressor_names)
 
 #         output_subdir = os.path.join(output_path, var)
 #         os.makedirs(output_subdir, exist_ok=True)
     
-#         output_file = MLR.perform_regression(output_path, var)
+#         output_file = SR.perform_regression(output_path, var)
 #         output_files.append(output_file)
 #         print(f"Regression completed for: {var}")
 
 #     return output_files
 
 
-def run_regression(config: dict) -> list[str]:
-    from ._regres import spatial_MLR
+def compute_regression(config: dict) -> list[str]:
+    from ._regres import SpatialRegression
     """
-    Run spatial multiple linear regression (MLR) for a single target variable.
+    Run spatial regression (SR) for a single target variable.
 
     This function loads a target field from ``target_<var>.nc``, aligns it
     with standardized driver indices from
     ``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``,
-    and performs a spatial MLR at each gridpoint using
-    :class:`storypy.compute._regres.spatial_MLR`.
+    and performs a spatial regression at each gridpoint using
+    :class:`storypy.compute._regres.SpatialRegression`.
 
     Parameters
     ----------
@@ -144,7 +144,7 @@ def run_regression(config: dict) -> list[str]:
     Examples
     --------
     >>> cfg = {"work_dir": "./output", "target_variable": ["pr"]}
-    >>> output_files = run_regression(cfg)  # doctest: +SKIP
+    >>> output_files = compute_regression(cfg)  # doctest: +SKIP
     >>> output_files[0].endswith(".nc")
     True
     """
@@ -185,8 +185,8 @@ def run_regression(config: dict) -> list[str]:
         target = target.squeeze("variable")
 
     # Run regression
-    MLR = spatial_MLR()
-    MLR.regression_data(target, regressors_aligned, regressor_names)
+    SR = SpatialRegression()
+    SR.regression_data(target, regressors_aligned, regressor_names)
 
     # Prepare output
     output_path = os.path.join(config["work_dir"], 'regression_output')
@@ -195,7 +195,7 @@ def run_regression(config: dict) -> list[str]:
     output_subdir = os.path.join(output_path, var)
     os.makedirs(output_subdir, exist_ok=True)
 
-    output_file = MLR.perform_regression(output_path, var)
+    output_file = SR.perform_regression(output_path, var)
     print(f"Regression completed for: {var}")
 
     return [output_file]
