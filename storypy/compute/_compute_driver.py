@@ -139,6 +139,14 @@ def compute_drivers(driver_config):
 
         df_raw = pd.DataFrame(data_raw, index=ds["model"].values)
 
+        for new_name, driver_a, driver_b in driver_config.get('gradient_drivers', []):
+            if driver_a not in df_raw.columns:
+                raise ValueError(f"Gradient driver '{driver_a}' not in df_raw.")
+            if driver_b not in df_raw.columns:
+                raise ValueError(f"Gradient driver '{driver_b}' not in df_raw.")
+            df_raw[new_name] = df_raw[driver_a] - df_raw[driver_b]
+            print(f"Gradient driver '{new_name}' = '{driver_a}' - '{driver_b}'")
+
         gw = ds["gw"]
         if tuple(gw.dims) != ("model",):
             raise ValueError(f"'gw' must have dims ('model',), got {gw.dims}")
@@ -250,6 +258,15 @@ def compute_drivers(driver_config):
 
     df_raw = pd.DataFrame(data_raw, index=common_models)
     df_scaled = pd.DataFrame(data_scaled, index=common_models)
+
+    for new_name, driver_a, driver_b in driver_config.get('gradient_drivers', []):
+            if driver_a not in df_raw.columns:
+                raise ValueError(f"Gradient driver '{driver_a}' not in df_raw.")
+            if driver_b not in df_raw.columns:
+                raise ValueError(f"Gradient driver '{driver_b}' not in df_raw.")
+            df_raw[new_name]    = df_raw[driver_a]    - df_raw[driver_b]
+            df_scaled[new_name] = df_scaled[driver_a] - df_scaled[driver_b]
+            print(f"Gradient driver '{new_name}' = '{driver_a}' - '{driver_b}'")
 
     # Standardize the scaled data (z-score normalization)
     df_standardized = df_scaled.apply(stand_pandas, axis=0)
@@ -782,6 +799,12 @@ def driver_indices(config):
 
     df_raw    = pd.DataFrame(regressors,        index=models)
     df_scaled = pd.DataFrame(regressors_scaled, index=models)
+
+    for new_name, driver_a, driver_b in config.get('gradient_drivers', []):
+            df_raw[new_name]    = df_raw[driver_a]    - df_raw[driver_b]
+            df_scaled[new_name] = df_scaled[driver_a] - df_scaled[driver_b]
+            print(f"Gradient driver '{new_name}' = '{driver_a}' - '{driver_b}'")
+
     df_stand  = df_scaled.apply(stand_pandas,   axis=0)
 
     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))

@@ -90,14 +90,14 @@ class StipplingComputer:
         self.season_months     = season_months
         self.variant_selection = variant_selection
 
-        # Load target dataset
-        target_path = os.path.join(work_dir, f'target_{target_variable}.nc')
-        if not os.path.exists(target_path):
-            raise FileNotFoundError(
-                f"Target file not found: {target_path}. "
-                "Run ESMValProcessor.process_var() first."
-            )
-        self.target_ds = xr.open_dataset(target_path)
+        # # Load target dataset
+        # target_path = os.path.join(work_dir, f'target_{target_variable}.nc')
+        # if not os.path.exists(target_path):
+        #     raise FileNotFoundError(
+        #         f"Target file not found: {target_path}. "
+        #         "Run ESMValProcessor.process_var() first."
+        #     )
+        # self.target_ds = xr.open_dataset(target_path)
 
         # Prepare output directory
         out_dir = os.path.join(work_dir, 'stippling')
@@ -145,7 +145,14 @@ class StipplingComputer:
         across ensemble members per model (as produced by
         :class:`storypy.preprocess.ESMValProcessor`).
         """
-        da = self.target_ds[self.var]   # dims: (model, lat, lon)
+        target_path = os.path.join(self.work_dir, f'target_{self.var}.nc')
+        if not os.path.exists(target_path):
+            raise FileNotFoundError(
+                f"Target file not found: {target_path}. "
+                "Run ESMValProcessor.process_var() first."
+            )
+        target_ds = xr.open_dataset(target_path)
+        da = target_ds[self.var]   # dims: (model, lat, lon)
 
         n_models  = da.sizes['model']
         threshold = n_models * agreement_threshold
@@ -155,8 +162,8 @@ class StipplingComputer:
         negatives = (da < 0).sum(dim='model')
 
         # Binary mask: 1 where threshold is exceeded
-        pos_mask = xr.where(positives > threshold, 1, 0)
-        neg_mask = xr.where(negatives > threshold, 1, 0)
+        pos_mask = xr.where(positives >= threshold, 1, 0)
+        neg_mask = xr.where(negatives >= threshold, 1, 0)
 
         # Assign spatial coordinates from first model slice
         template = da.isel(model=0).drop_vars('model')
@@ -244,53 +251,66 @@ class StipplingComputer:
     ):
         """
         Compute signal-to-noise stippling mask (gamma criterion).
-
+ 
         Saves two NetCDF files under ``{work_dir}/stippling/``:
-
+ 
         - ``gamma_forced_CMIP6.nc`` : median signal-to-noise ratio across
         models (f = signal / noise).
         - ``summatory_denom_CMIP6.nc`` : sum of ``1 / noise^2`` across all
         models, used as the denominator weight in the Zappa & Shepherd
         significance formula.
-
+ 
         Parameters
         ----------
         rolling_window : int
             Window length in years. Default 30.
-
+ 
         Returns
         -------
         (xarray.DataArray, xarray.DataArray)
             Tuple ``(gamma_median, summatory_denom)``.
         """
         model_data = self._load_picontrol()
-
+ 
+        # Load forced signal from target_pr.nc
+        target_path = os.path.join(self.work_dir, f'target_{self.var}.nc')
+        if not os.path.exists(target_path):
+            raise FileNotFoundError(
+                f"Target file not found: {target_path}. "
+                "Run ESMValProcessor.process_var() first."
+            )
+        target_ds     = xr.open_dataset(target_path)
+        forced_signal = target_ds[self.var].mean(dim='model')
+ 
         gamma_list       = []
         summatory_list   = []   # accumulates 1/noise^2 per model
-
+ 
         for model, members in sorted(model_data.items()):
-
+ 
             members_sorted = sorted(members, key=lambda x: x[0])
-
+ 
             if self.variant_selection == 'first':
                 selected = [members_sorted[0][1]]
             elif self.variant_selection == 'last':
                 selected = [members_sorted[-1][1]]
             else:
                 selected = [da for _, da in members_sorted]
-
+ 
             model_gammas    = []
             model_inv_noise = []   # 1/noise^2 per variant
-
+ 
             for da in selected:
-
+ 
                 if (self.season_months is not None and
                         da.sizes.get('time', 0) > 100):
                     from storypy.preprocess._diagnostics import (
                         seasonal_data_months
                     )
                     da = seasonal_data_months(da, self.season_months)
-
+ 
+                if self.var == 'pr':
+                    da = da * 86400
+ 
                 if da.sizes.get('time', 0) < rolling_window * 2:
                     print(
                         f"  Skipping {model}: only "
@@ -298,41 +318,41 @@ class StipplingComputer:
                         f"(need at least {rolling_window * 2})"
                     )
                     continue
-
-                # Forced signal: std of non-overlapping rolling means
+ 
+                # Internal variability (noise): std of non-overlapping piControl rolling means
                 rolling_mean = (
                     da.rolling(time=rolling_window, center=True)
                     .mean()
                     .dropna('time')
                 )
-                non_overlap  = rolling_mean.isel(
+                non_overlap = rolling_mean.isel(
                     time=slice(0, None, rolling_window)
                 )
-                signal = non_overlap.std(dim='time')
-
-                # Internal variability: mean of rolling std
-                rolling_std     = (
-                    da.rolling(time=rolling_window, center=True)
-                    .std()
-                    .dropna('time')
-                )
-                non_overlap_std = rolling_std.isel(
-                    time=slice(0, None, rolling_window)
-                )
-                noise = non_overlap_std.mean(dim='time')
-
-                # Gamma = signal / noise
-                gamma     = xr.where(noise > 0, signal / noise, np.nan)
+                noise = non_overlap.std(dim='time')
+ 
+                # Wrap noise lons to -180/180 before interp so it aligns
+                # with forced_signal (which is already in -180/180 convention)
+                if noise['lon'].values.max() > 180:
+                    noise = noise.assign_coords(
+                        lon=((noise['lon'].values + 180) % 360 - 180)
+                    )
+                    noise = noise.sortby('lon')
+ 
+                # Forced signal: MEM change from target_pr.nc interpolated to piControl grid
+                signal = forced_signal.interp_like(noise)
+ 
+                # Gamma = |forced signal| / piControl noise
+                gamma = xr.where(noise > 0, np.abs(signal) / noise, np.nan)
                 # 1/noise^2 — denominator weight (original: summatory_denom)
                 inv_noise2 = xr.where(noise > 0, 1.0 / (noise ** 2), np.nan)
-
+ 
                 model_gammas.append(gamma)
                 model_inv_noise.append(inv_noise2)
-
+ 
             if not model_gammas:
                 print(f"  No valid gamma for {model}, skipping.")
                 continue
-
+ 
             # Average across variants for this model
             if len(model_gammas) == 1:
                 model_gamma     = model_gammas[0]
@@ -342,37 +362,47 @@ class StipplingComputer:
                                     .mean(dim='variant'))
                 model_inv_noise2 = (xr.concat(model_inv_noise, dim='variant')
                                     .mean(dim='variant'))
-
+ 
             gamma_list.append(model_gamma)
             summatory_list.append(model_inv_noise2)
             print(
                 f"  Gamma computed for {model} "
                 f"({len(model_gammas)} variant(s))"
             )
-
+ 
         if not gamma_list:
             raise RuntimeError(
                 "No gamma values were computed. Check that piControl "
                 "files were loaded correctly and have sufficient time steps."
             )
-
+ 
         # Median gamma across models
         gamma_stack  = xr.concat(gamma_list, dim='model')
         gamma_median = gamma_stack.median(dim='model')
         gamma_median.name = 'gamma'
-
+ 
         # Sum of 1/noise^2 across models — matches original summatory_denom
         summatory_stack = xr.concat(summatory_list, dim='model')
         summatory_denom = summatory_stack.sum(dim='model')
         summatory_denom.name = 'summatory_denom'
-
+ 
+        gamma_median = gamma_median.assign_coords(
+            lon=(gamma_median.lon.values + 180) % 360 - 180
+        )
+        gamma_median = gamma_median.sortby('lon')
+ 
+        summatory_denom = summatory_denom.assign_coords(
+            lon=(summatory_denom.lon.values + 180) % 360 - 180
+        )
+        summatory_denom = summatory_denom.sortby('lon')
+ 
         # Save both outputs
         gamma_path = os.path.join(self.out_dir, 'gamma_forced_CMIP6.nc')
         denom_path = os.path.join(self.out_dir, 'summatory_denom_CMIP6.nc')
-
+ 
         gamma_median.to_netcdf(gamma_path)
         summatory_denom.to_netcdf(denom_path)
-
+ 
         print(
             f"Gamma significance saved to {self.out_dir} "
             f"({len(gamma_list)} models):\n"

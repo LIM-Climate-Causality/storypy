@@ -44,24 +44,68 @@ def univariate_dist(df_stand, driver, confidence_level):
         )
     return float(df_stand[driver].quantile(confidence_level))
 
-from scipy.stats import chi2
-
-def bivariate_dist(confidence_level=0.8, n_drivers=2):
+def bivariate_dist(confidence_level=0.8, n_drivers=2, r=0.0):
     """
-    Compute the storyline coefficient following Zappa & Shepherd (2017).
-    Returns the radius of the confidence ellipse at the given confidence
-    level for a bivariate normal distribution.
+    Compute storyline coefficients following Zappa & Shepherd (2017)
+    and Monerie et al. (2023).
 
-    For confidence_level=0.8, n_drivers=2: returns 1.2649 ≈ 1.26
+    When r=0 (independent drivers), returns a single coefficient i
+    equivalent to Zappa & Shepherd (2017).
+
+    When r≠0 (correlated drivers), returns two coefficients following
+    Monerie et al. (2023):
+    - i1: for co-varying storylines (A+M+ or A-M-)
+    - i2: for opposing storylines (A+M- or A-M+)
+
+    Parameters
+    ----------
+    confidence_level : float
+        Confidence level in [0, 1]. Default 0.8.
+    n_drivers : int
+        Degrees of freedom. Default 2.
+    r : float
+        Correlation coefficient between the two drivers.
+        Default 0.0 reproduces Zappa & Shepherd (2017).
+
+    Returns
+    -------
+    float or tuple(float, float)
+        If r=0: single float coefficient (as before).
+        If r≠0: tuple (i1, i2) where i1 is for same-direction
+        storylines and i2 for opposing storylines.
+
+    Examples
+    --------
+    >>> bivariate_dist(0.8, 2, r=0.0)     # → 1.2649 (Zappa & Shepherd)
+    >>> bivariate_dist(0.8, 2, r=0.35)    # → (1.46, 1.01) (Mindlin 2020 and Monerie 2023)
     """
-    return float(np.sqrt(chi2.ppf(confidence_level, df=n_drivers) / n_drivers))
+    from scipy.stats import chi2
 
-print(bivariate_dist(0.8, 2))
+    if not 0 < confidence_level < 1:
+        raise ValueError(
+            f"confidence_level must be between 0 and 1, got {confidence_level}"
+        )
+    if not -1 < r < 1:
+        raise ValueError(
+            f"r must be between -1 and 1, got {r}"
+        )
+
+    c = chi2.ppf(confidence_level, df=n_drivers)
+
+    if r == 0.0:
+        # As in Zappa & Shepherd (2017) — single symmetric coefficient r=0 (means independent drivers)
+        return float(np.sqrt(c / n_drivers))
+    else:
+        # As in Mindlin et al. (2020) and Monerie et al. (2023) — correlated drivers, two coefficients
+        i1 = float(np.sqrt((1 - r**2) / (2 * (1 - r)) * c))  # same direction
+        i2 = float(np.sqrt((1 - r**2) / (2 * (1 + r)) * c))  # opposing
+        return i1, i2
 
 def storyline_evaluation(main_config, target, drivers,
                          storyline_coefficient=None,
-                         coeffs_high=None,
-                         coeffs_low=None,
+                         coeffs_high=None, coeffs_low=None,
+                         confidence_level=0.8,
+                         use_correlation=False,
                          gw_level=1):
 
     data = xr.open_dataset(
@@ -69,28 +113,53 @@ def storyline_evaluation(main_config, target, drivers,
                      target, "regression_coefficients.nc")
     )
 
-    # Resolve which approach to use for the storyline coefficients
-    if coeffs_high is not None and coeffs_low is not None:
-        # Univariate distribution which uses a data-driven approach, different value per driver
+    d0, d1 = drivers[0], drivers[1]
+
+    if use_correlation:
+        # correlated drivers, two coefficients
+        stand_path = os.path.join(
+            main_config["work_dir"],
+            "storyline_analysis/multiple_regresion/remote_drivers",
+            "scaled_standardized_drivers.csv"
+        )
+        df_stand = pd.read_csv(stand_path, index_col=0)
+        r        = float(df_stand[d0].corr(df_stand[d1]))
+        i1, i2   = bivariate_dist(confidence_level, 2, r=r)
+        print(f"r={r:.3f}, i1={i1:.4f} (same dir), i2={i2:.4f} (opposing)")
+
+        storylines = [
+            data['MEM'] + i2 * data[d1] - i2 * data[d0],   # high d1, low d0
+            data['MEM'] + i1 * data[d1] + i1 * data[d0],   # high d1, high d0
+            data['MEM'] - i1 * data[d1] - i1 * data[d0],   # low d1, low d0
+            data['MEM'] - i2 * data[d1] + i2 * data[d0],   # low d1, high d0
+            data['MEM']
+        ]
+
+    elif coeffs_high is not None and coeffs_low is not None:
+        # Data-driven quantiles — different value per driver
         ch = coeffs_high
         cl = coeffs_low
-    elif storyline_coefficient is not None:
-        # Bivariate distribution which uses a fixed value for all drivers (e.g., Zappa & Shepherd)
-        ch = {d:  storyline_coefficient for d in drivers}
-        cl = {d: -storyline_coefficient for d in drivers}
-    else:
-        raise ValueError(
-            "Provide either storyline_coefficient or both coeffs_high and coeffs_low."
-        )
+        storylines = [
+            data['MEM'] + ch[d1] * data[d1] + cl[d0] * data[d0],
+            data['MEM'] + ch[d1] * data[d1] + ch[d0] * data[d0],
+            data['MEM'] + cl[d1] * data[d1] + cl[d0] * data[d0],
+            data['MEM'] + cl[d1] * data[d1] + ch[d0] * data[d0],
+            data['MEM']
+        ]
 
-    d0, d1 = drivers[0], drivers[1]
-    storylines = [
-        data['MEM'] + ch[d1] * data[d1] + cl[d0] * data[d0],
-        data['MEM'] + ch[d1] * data[d1] + ch[d0] * data[d0],
-        data['MEM'] + cl[d1] * data[d1] + cl[d0] * data[d0],
-        data['MEM'] + cl[d1] * data[d1] + ch[d0] * data[d0],
-        data['MEM']
-    ]
+    else:
+        # Default to r=0 or explicit fixed coefficient passed by user
+        sc = storyline_coefficient if storyline_coefficient is not None \
+            else bivariate_dist(confidence_level=confidence_level,
+                                n_drivers=2, r=0.0)
+        print(f"Using storyline coefficient: {sc:.4f}")
+        storylines = [
+            data['MEM'] + sc * data[d1] - sc * data[d0],
+            data['MEM'] + sc * data[d1] + sc * data[d0],
+            data['MEM'] - sc * data[d1] - sc * data[d0],
+            data['MEM'] - sc * data[d1] + sc * data[d0],
+            data['MEM']
+        ]
 
     storyline_labels = [
         f"high {d1} low {d0}",
