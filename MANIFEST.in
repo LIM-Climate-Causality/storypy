@@ -1,3 +1,0 @@
-recursive-include storypy/data/regression_output/pr *
-recursive-include storypy/data/regression_output/ua *
-recursive-include storypy/data/remote_drivers/*.csv
