@@ -45,12 +45,17 @@ These pages will help you install and use **storypy** for the first time.
 Tutorials
 =========
 
-Below are example workflows that demonstrate how to use **storypy** in practice. Each notebook is hosted on **nbviewer** and linked directly:
+Below are example workflows that demonstrate how to use **storypy** in practice.  
+Each notebook is hosted on **nbviewer** and linked directly.
 
-- `Ghosh and Shepherd 2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_ghosh_2023.ipynb>`_
-- `Mindlin et al. 2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_mindlin_2020.ipynb>`_
-- `Monerie et al. 2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_monerie_2023.ipynb>`_
-- `Zappa and Shepherd 2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_zs_2017.ipynb>`_
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials
+
+   Zappa_and_Shepherd_2017 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_zs_2017.ipynb>
+   Mindlin_2020 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_mindlin_2020.ipynb>
+   Monerie_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_monerie_2023.ipynb>
+   Ghosh_2023 <https://nbviewer.org/github/LIM-Climate-Causality/storypy/blob/main/notebooks/sp_ghosh_2023.ipynb>
 
 ---
 
