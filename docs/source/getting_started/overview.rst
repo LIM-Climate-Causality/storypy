@@ -101,7 +101,7 @@ We designed two options for processing CMIP data:
     >>> │   └── ...
     >>> └── ...
 
-Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, user can preprocess the data by calling the methods and using the following steps for example:
+Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, the full pipeline can be run as follows:
 
 .. code-block:: python
  
@@ -111,6 +111,7 @@ Preprocessing CMIP data is a crucial step in the analysis of dynamical storyline
    processor = ESMValProcessor(esmval_config, user_config, driver_config)   # Option A
    # OR
    processor = ModelDataPreprocessor(user_config, driver_config)             # Option B
+   
    processor.process_var()
    processor.process_driver()
  
@@ -132,6 +133,11 @@ Preprocessing CMIP data is a crucial step in the analysis of dynamical storyline
    from storypy.evaluate import plot_function
    fig = plot_function(target_change, p_values, positives_model, negatives_model, ...)
 
+.. note::
+ 
+   The γ criterion requires a separate ESMValTool recipe run using piControl data.
+   See the :ref:`gamma significance test documentation <gamma_significance>` for details.
+
 What storypy does not do (Limitations)
 --------------------------------------
 
@@ -141,21 +147,16 @@ After motivating you on the advantages of using storypy, we also want to bring t
 
 Storypy can work with data that has been regridded or post-processed, but it does not automatically detect or correct inconsistencies introduced upstream. Small differences in preprocessing can translate into noticeable differences in indices, scaling factors, regression coefficients, or storyline patterns. As an example, we preprocessed CMIP6 data using ESMValTool and compared the results to a local CMIP database that we had previously processed. We found that the results were not exactly the same, even though the same models and variables were used. This is because of differences in regridding methods, interpolation, and other processing steps. Therefore, it is important to ensure that the data is processed consistently across models and that any differences in preprocessing are understood and accounted for when interpreting the results. |brr|
 
-.. image:: ../images/pr.png
-   :width: 800
-   :alt: PR changes
-
-
-2. **Fundamental problems with model data (“garbage in, garbage out”)**
-
-Storypy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, Storypy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
-
 .. figure:: ../images/pr.png
    :width: 800
    :align: center
    :alt: PR changes
 
    **Figure:** Climatological change in precipitation normalized by Global warming.
+
+2. **Fundamental problems with model data (“garbage in, garbage out”)**
+
+Storypy cannot guarantee that a given climate model dataset is suitable for the question you want to answer. Like any analysis tool, Storypy will faithfully process the inputs it is given, even if the underlying data contain biases or structural problems that no post-processing step can fix.
 
 About the authors
 -----------------
@@ -184,6 +185,8 @@ References
 - Ghosh, R., & Shepherd, T. G. (2023). Storylines of Maritime Continent dry period precipitation changes under global warming. Environmental Research Letters, 18(3), 034017. https://doi.org/10.1088/1748-9326/acb788.
 - Levine, X. J., Williams, R. S., Marshall, G., Orr, A., Graff, L. S., Handorf, D., Karpechko, A., Köhler, R., Wijngaard, R. R., Johnston, N., Lee, H., Nieradzik, L., & Mooney, P. A. (2024). Storylines of summer Arctic climate change constrained by Barents–Kara seas and Arctic tropospheric warming for climate risk assessment. Earth System Dynamics, 15(4), 1161–1177. https://doi.org/10.5194/esd-15-1161-2024.
 - Mindlin, J., Shepherd, T. G., Vera, C. S., Osman, M., Zappa, G., Lee, R. W., & Hodges, K. I. (2020). Storyline description of Southern Hemisphere midlatitude circulation and precipitation response to greenhouse gas forcing. Climate Dynamics, 54(9–10), 4399–4421. https://doi.org/10.1007/s00382-020-05234-1.
+- Mindlin, J., Vera, C. S., Shepherd, T. G., & Osman, M. (2023). Plausible drying and wetting scenarios for summer in southeastern South America. Journal of Climate, 36(22), 7973–7991. https://doi.org/10.1175/jcli-d-23-0134.1.
 - Monerie, P., Biasutti, M., Mignot, J., Mohino, E., Pohl, B., & Zappa, G. (2023). Storylines of Sahel Precipitation change: Roles of the North Atlantic and Euro‐Mediterranean temperature. Journal of Geophysical Research Atmospheres, 128(16). https://doi.org/10.1029/2023jd038712.
 - Tebaldi, C., & Arblaster, J. M. (2014). Pattern scaling: Its strengths and limitations, and an update on the latest model simulations. Climatic Change, 122(3), 459–471. https://doi.org/10.1007/s10584-013-1032-9.
 - Zappa, G., & Shepherd, T. G. (2017). Storylines of atmospheric circulation change for European Regional Climate Impact Assessment. Journal of Climate, 30(16), 6561–6577. https://doi.org/10.1175/jcli-d-16-0807.1.
+- Zappa, G., Bevacqua, E., & Shepherd, T. G. (2021). Communicating potentially large but non‐robust changes in multi‐model projections of future climate. International Journal of Climatology, 41(6), 3657–3669. https://doi.org/10.1002/joc.7041.

@@ -1,112 +1,98 @@
-.. .. # define a hard line break for HTML
-.. .. |br| raw:: html
+.. _evaluate:
 
-..    <br />
+.. |br| raw:: html
 
-.. .. # define a double hard line break for HTML
-.. .. |brr| raw:: html
+   <br />
 
-..    <br /> <br />
+.. |brr| raw:: html
 
-
-.. ibicus.evaluate module
-.. =============================
-
-.. .. automodule:: ibicus.evaluate
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+   <br /> <br />
 
 
-.. ibicus.evaluate.metrics
-.. ------------------------------
+storypy.evaluate module
+=======================
 
-.. .. automodule:: ibicus.evaluate.metrics
+This module provides functions for visualizing projected climate change fields with stippling significance markers, region boxes, and storyline evaluation plots.
 
+----
 
-.. ibicus.evaluate.metrics.ThresholdMetric
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Plotting
+--------
 
-.. .. autoclass:: ThresholdMetric
-.. 	:members: from_quantile, calculate_instances_of_threshold_exceedance, filter_threshold_exceedances, calculate_exceedance_probability, calculate_number_annual_days_beyond_threshold, calculate_spell_length, calculate_spatial_extent, calculate_spatiotemporal_clusters, violinplots_clusters
+.. currentmodule:: storypy.evaluate._plotting
 
+.. autofunction:: plot_function
 
-.. ibicus.evaluate.metrics.AccumulativeThresholdMetric
-.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The ``plot_function`` produces a map of projected climate change (e.g. precipitation) overlaid with significance stippling following the two-criterion approach of Zappa et al. (2021) and Mindlin et al. (2023):
 
-.. .. autoclass:: AccumulativeThresholdMetric
-.. 	:members: from_quantile, calculate_percent_of_total_amount_beyond_threshold, calculate_annual_value_beyond_threshold, calculate_intensity_index
+- **Filled dots** - β criterion: ≥ 90% of models agree on the sign of change.
+- **Open circles** - γ criterion: forced signal exceeds internal variability (γ > 1).
+- **Filled dot inside open circle** - both criteria are satisfied simultaneously.
 
+Example usage:
 
-.. Concrete metrics
-.. ^^^^^^^^^^^^^^^^
+.. code-block:: python
 
-.. .. autodata:: dry_days
+   import xarray as xr
+   from storypy.evaluate import plot_function
 
-.. .. autodata:: wet_days
+   # Load outputs from the storypy pipeline
+   target_mean  = xr.open_dataset('target_pr.nc')['pr'].mean(dim='model')
+   pos_ds       = xr.open_dataset('stippling/number_of_models_positive_trend_CMIP6.nc')
+   neg_ds       = xr.open_dataset('stippling/number_of_models_negative_trend_CMIP6.nc')
+   gamma_ds     = xr.open_dataset('stippling/gamma_forced_CMIP6.nc')
 
-.. .. autodata:: R10mm
+   # Convert gamma ratio to pseudo p-value (0 = significant, 1 = not significant)
+   gamma        = gamma_ds['gamma']
+   gamma_as_pval = xr.where(gamma > 1.0, 0.0, 1.0)
 
-.. .. autodata:: R20mm
+   # Global Robinson projection
+   fig = plot_function(
+       target_change   = target_mean,
+       p_values        = gamma_as_pval,
+       positives_model = pos_ds,
+       negatives_model = neg_ds,
+       region_extents  = [(30, 45, -10, 40)],  # (lat_min, lat_max, lon_min, lon_max)
+       sig_level       = 0.5,
+       sig             = 1,
+       projection      = 'robinson',
+   )
 
-.. .. autodata:: warm_days
+   # Zoomed regional PlateCarree projection
+   fig = plot_function(
+       target_change   = target_mean,
+       p_values        = gamma_as_pval,
+       positives_model = pos_ds,
+       negatives_model = neg_ds,
+       region_extents  = [(30, 45, -10, 40)],
+       sig_level       = 0.5,
+       sig             = 1,
+       projection      = 'platecarree',
+       map_extent      = [-30, 60, 15, 70],
+   )
 
-.. .. autodata:: cold_days
+.. note::
 
-.. .. autodata:: frost_days
+   ``gamma_as_pval`` is constructed from the raw γ ratio saved in ``gamma_forced_CMIP6.nc`` by converting it to a pseudo p-value: ``gamma_as_pval = xr.where(gamma > 1.0, 0.0, 1.0)``. This ensures compatibility with the ``p_values < sig_level`` threshold used internally by ``plot_function``.
 
-.. .. autodata:: tropical_nights
+----
 
-.. .. autodata:: summer_days
+Stippling visualisation
+-----------------------
 
-.. .. autodata:: icing_days
+.. currentmodule:: storypy.evaluate._stippling
 
-.. ----
+.. autofunction:: add_stippling
 
-.. ibicus.evaluate.marginal
-.. -------------------------------
+.. note::
 
-.. .. automodule:: ibicus.evaluate.marginal
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+   ``add_stippling`` is the low-level function called internally by ``plot_function`` to render significance markers onto a Cartopy axes. It uses ``ax.scatter`` rather than ``ax.plot`` to ensure correct rendering across all longitudes on non-PlateCarree projections (e.g. Robinson).
 
-.. ----
+----
 
-.. ibicus.evaluate.multivariate
-.. -----------------------------------
+Storyline evaluation
+--------------------
 
-.. .. automodule:: ibicus.evaluate.multivariate
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+.. currentmodule:: storypy.evaluate._evaluate
 
-.. ----
-
-.. ibicus.evaluate.correlation
-.. ----------------------------------
-
-.. .. automodule:: ibicus.evaluate.correlation
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
-
-.. ----
-
-.. ibicus.evaluate.trend
-.. ----------------------------
-
-.. .. automodule:: ibicus.evaluate.trend
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
-
-.. ----
-
-.. ibicus.evaluate.assumptions
-.. ----------------------------------
-
-.. .. automodule:: ibicus.evaluate.assumptions
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+.. autofunction:: evaluate_storylines
