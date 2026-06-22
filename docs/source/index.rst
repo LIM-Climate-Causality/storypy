@@ -38,7 +38,7 @@ These pages will help you install and use **storypy** for the first time.
 
    getting_started/overview
    getting_started/installing
-   getting_started/whatarestorylines
+   getting_started/picontrol_recipe
 
 ---
 
