@@ -50,6 +50,22 @@ Pattern response (:math:`∆P_{xm}` at location :math:`x` and model :math:`m` pr
           + d_x \left(\frac{\Delta T_{driver3}}{\Delta T}\right)'_m
           + e_{xm}
 
+Significance testing
+~~~~~~~~~~~~~~~~~~~~
+ 
+storypy implements the two-criterion stippling approach of Zappa et al. (2021) and
+Mindlin et al. (2023) to assess the robustness of projected changes:
+ 
+- **β criterion (model agreement)** - a gridpoint is flagged where ≥ 90% of CMIP6
+  models agree on the sign of the projected change.
+ 
+- **γ criterion (signal-to-noise)** - a gridpoint is flagged where the forced signal
+  exceeds the amplitude of internal variability estimated from piControl simulations
+  (γ > 1). The γ ratio is computed using non-overlapping 30-year rolling means of
+  seasonal piControl data.
+ 
+Together, these criteria identify regions of *robust* change (both criteria met),
+*large but non-robust* change (γ > 1 only), and *robust but small* change (β only).
 
 What is StoryPy?
 ---------------
@@ -87,24 +103,34 @@ We designed two options for processing CMIP data:
 
 Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. StoryPy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, user can preprocess the data by calling the methods and using the following steps for example:
 
->>> from storypy.preprocess import ESMValProcessor, ModelDataPreprocessor, parse_config
->>> processor_target = ESMValProcessor(esmval_config, user_config, driver_config)
-OR
->>> processor_target = ModelDataPreprocessor(user_config, driver_config)
->>> processor_target.process_var()
->>> processor_target.process_driver()
-
-Users can compute the driver indices and regression coefficients for a desired study region, for example:
-
-For the driver indices:
-
->>> from storypy.compute import compute_drivers
->>> df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
-
-For the regression coefficients:
-
->>> from storypy.compute import run_regression
->>> outputs = run_regression(user_config)
+.. code-block:: python
+ 
+   # Step 1 - Preprocess CMIP data
+   from storypy.preprocess import ESMValProcessor, ModelDataPreprocessor
+ 
+   processor = ESMValProcessor(esmval_config, user_config, driver_config)   # Option A
+   # OR
+   processor = ModelDataPreprocessor(user_config, driver_config)             # Option B
+   processor.process_var()
+   processor.process_driver()
+ 
+   # Step 2 - Compute driver indices
+   from storypy.compute import compute_drivers
+   df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
+ 
+   # Step 3 - Run regression
+   from storypy.compute import run_regression
+   outputs = run_regression(user_config)
+ 
+   # Step 4 - Compute stippling significance masks
+   from storypy.compute import StipplingComputer
+   sc = StipplingComputer(work_dir, target_variable='pr', ...)
+   sc.beta_significance()          # β criterion
+   sc.gamma_significance()         # γ criterion (requires piControl ESMValTool run)
+ 
+   # Step 5 - Visualise
+   from storypy.evaluate import plot_function
+   fig = plot_function(target_change, p_values, positives_model, negatives_model, ...)
 
 What storypy does not do (Limitations)
 --------------------------------------
