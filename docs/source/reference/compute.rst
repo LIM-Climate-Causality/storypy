@@ -45,7 +45,7 @@ Regression core utilities
 
 .. currentmodule:: storypy.compute._regres
 
-.. autoclass:: spatial_MLR
+.. autoclass:: SpatialRegression
    :members: regression_data, linear_regression, linear_regression_pvalues,
              linear_regression_R2, perform_regression,
              open_regression_coef, open_lmg_coef,
