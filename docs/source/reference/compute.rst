@@ -36,7 +36,7 @@ Multiple linear regression
 
 .. currentmodule:: storypy.compute._mlr
 
-.. autofunction:: run_regression
+.. autofunction:: compute_regression
 
 ----
 
