@@ -570,7 +570,13 @@ def stand(dato):
     return anom
 
 def replace_nans_with_zero(x):
-    return np.where(np.isnan(x), random.random(), x)
+    # Replace NaNs with the mean of valid values at this gridpoint
+    # so missing models don't bias the regression
+    mean_val = np.nanmean(x)
+    if np.isnan(mean_val):
+        # All models are NaN at this gridpoint - return zeros
+        return np.zeros_like(x)
+    return np.where(np.isnan(x), mean_val, x)
 
 def figure(target,predictors):
     fig = plt.figure()
