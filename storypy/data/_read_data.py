@@ -104,7 +104,7 @@ def _open_csv(relative_path: str) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Regression outputs  (variable + diagnostic)
+# Computed regression outputs  (variable + diagnostic)
 # ---------------------------------------------------------------------------
 
 #: Valid regression diagnostic names
@@ -209,6 +209,24 @@ def list_targets() -> list:
 # Driver NetCDF files
 # ---------------------------------------------------------------------------
 
+def list_drivers() -> list:
+    """
+    List all available driver files bundled with storypy.
+
+    Returns
+    -------
+    list of str
+        Filenames available under ``storypy/data/drivers/``.
+
+    Examples
+    --------
+    >>> from storypy.data import list_drivers
+    >>> list_drivers()
+    ['monerie23_drivers.nc', 'zs17_drivers.nc', ...]
+    """
+    driver_dir = _data_path('drivers')
+    return sorted(p.name for p in driver_dir.iterdir() if p.suffix == '.nc')
+
 def load_driver_field(study: str) -> xr.Dataset:
     """
     Load the raw driver NetCDF file for a given study.
@@ -231,7 +249,7 @@ def load_driver_field(study: str) -> xr.Dataset:
 
 
 # ---------------------------------------------------------------------------
-# Remote driver CSV files
+# Computed remote driver CSV files
 # ---------------------------------------------------------------------------
 
 def read_drivers() -> pd.DataFrame:
