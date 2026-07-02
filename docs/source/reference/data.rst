@@ -116,7 +116,7 @@ Available studies and seasons:
 Driver fields
 -------------
 
-.. autofunction:: load_driver_field
+.. autofunction:: load_driver_field, list_drivers
 
 ----
 
