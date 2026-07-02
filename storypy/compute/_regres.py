@@ -92,7 +92,7 @@ class SpatialRegression(object):
         self.rd_num = len(regressor_names)
         self.regressor_names = regressor_names
 
-    #Regresion lineal
+    # Linear regression
     def linear_regression(self,x):
         """
         Fit an OLS regression for a single gridpoint.
@@ -469,9 +469,6 @@ class SpatialRegression(object):
         cmapU850.set_over('maroon')
         cmapU850.set_under('midnightblue')
         path_era = '/datos/ERA5/mon'
-        # u_ERA = xr.open_dataset(path_era+'/era5.mon.mean.nc')
-        # u_ERA = u_ERA.u.sel(lev=850).sel(time=slice('1979','2018'))
-        # u_ERA = u_ERA.groupby('time.season').mean(dim='time').sel(season='DJF')
 
         fig_coef = plt.figure(figsize=(20, 16),dpi=100,constrained_layout=True)
         projection_stereo = ccrs.SouthPolarStereo(central_longitude=300)
@@ -499,9 +496,6 @@ class SpatialRegression(object):
                 im0=ax.contourf(lon_c, lat, var_c,transform=data_crs,cmap='OrRd',extend='both')
             else:
                 clevels = np.arange(-.6,.7,0.1)
-            #     im=ax.contourf(lon_c, lat, var_c,clevels,transform=data_crs,cmap='RdBu_r',extend='both')
-            # cnt=ax.contour(u_ERA.lon,u_ERA.lat, u_ERA.values,levels=[8],transform=data_crs,linewidths=1.2, colors='black', linestyles='-')
-            # plt.clabel(cnt,inline=True,fmt='%1.0f',fontsize=8)
             if maps_pval[k].min() < 0.05: 
                 levels = [maps_pval[k].min(),0.05,maps_pval[k].max()]
                 ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)

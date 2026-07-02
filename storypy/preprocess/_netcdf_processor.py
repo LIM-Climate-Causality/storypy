@@ -2,7 +2,7 @@
 storypy.preprocess._netcdf_processor
 ====================================
 
-Preprocessing of local CMIP6 NetCDF files without ESMValTool metadata.
+Preprocessing of local CMIP NetCDF files without ESMValTool metadata.
 
 This module provides :class:`ModelDataPreprocessor`, a high-level helper to:
 1) discover model/member coverage that’s common across variables,
@@ -42,11 +42,10 @@ from numpy import var
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months
-# from storypy.evaluate.plot import plot_precipitation_change, plot_function
 
 class ModelDataPreprocessor:
     """
-    Preprocess locally stored CMIP6 NetCDF files (no ESMValTool metadata).
+    Preprocess locally stored CMIP NetCDF files (no ESMValTool metadata).
 
     This class discovers common model/member coverage across variables,
     computes climatological changes between two periods, normalizes by a
@@ -192,7 +191,7 @@ class ModelDataPreprocessor:
                 if experiment not in ('historical', self.exp_name):
                     continue
                 model   = parts[2]   # e.g. ACCESS-CM2
-                variant = parts[4]   # e.g. r1i1p1f1 — was wrongly [3] before
+                variant = parts[4]   # e.g. r1i1p1f1
                 model_members.add(f"{model}_{variant}")
             model_sets[var] = model_members
 
@@ -308,7 +307,7 @@ class ModelDataPreprocessor:
                     print(f"Warning: GW scalar is {gv} for model {m}, skipping.")
                     continue
 
-                # ch and ts are Datasets from clim_change — extract DataArray for target var
+                # ch and ts are Datasets from clim_change - extract DataArray for target var
                 norm    = (ch / gv).expand_dims({'model': [m]})
                 norm_ts = (ts / gv).expand_dims({'model': [m]})
 

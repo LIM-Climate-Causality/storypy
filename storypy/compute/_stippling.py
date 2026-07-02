@@ -90,15 +90,6 @@ class StipplingComputer:
         self.season_months     = season_months
         self.variant_selection = variant_selection
 
-        # # Load target dataset
-        # target_path = os.path.join(work_dir, f'target_{target_variable}.nc')
-        # if not os.path.exists(target_path):
-        #     raise FileNotFoundError(
-        #         f"Target file not found: {target_path}. "
-        #         "Run ESMValProcessor.process_var() first."
-        #     )
-        # self.target_ds = xr.open_dataset(target_path)
-
         # Prepare output directory
         out_dir = os.path.join(work_dir, 'stippling')
         os.makedirs(out_dir, exist_ok=True)

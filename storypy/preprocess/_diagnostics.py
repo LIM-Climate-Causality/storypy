@@ -73,7 +73,8 @@ def seasonal_data_months(data, months):
 
     return averaged
 
-# Function to test if the mean of the sample data is significantly different from zero
+# Function to test if the mean of the sample data is significantly different from zero i.e the p-value
+# Function not in use yet, but can be used to test significance of the mean of the sample data
 def test_mean_significance(sample_data):
     """Test if the mean of the sample_data is significantly different from zero."""
     if sample_data.size < 2:
@@ -165,8 +166,6 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
             region = regionmask.defined_regions.ar6.land[region_id]
             lon_min, lat_min, lon_max, lat_max = region.bounds
             target.attrs['region_extent'] = [lon_min, lon_max, lat_min, lat_max]
-        # else:
-        #     raise ValueError("Invalid region selection. Specify 'box' with 'box' parameter or 'mask' with 'region_id'.")
 
     # Adjust time periods for seasonal or cross-year calculations
     def adjust_period_for_season(start_year, end_year, season):

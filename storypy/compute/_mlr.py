@@ -32,67 +32,8 @@ Example
 ['./output/regression_output/pr/regression_coefficients.nc', ...]
 """
 
-# from ._regres import SpatialRegression
 from storypy.utils import xr, pd
 import os
-
-
-# def compute_regression(config: dict) -> list[str]:
-#     """
-#     Run spatial multiple linear regression (SR) for multiple target variables using NetCDF and CSV data.
-
-#     Parameters:
-#         config (dict): Configuration with keys like 'work_dir'.
-#         target_vars (list of str): List of variable names in the NetCDF dataset to use as regression targets.
-#     """
-
-#     target_vars = config.get("target_variable", [])
-#     if not target_vars:
-#         raise ValueError("No target variables specified in config['target_variable'].")
-
-#     target_path = os.path.join(config['work_dir'], "target.nc")
-#     driver_path = os.path.join(config['work_dir'], "driver_outputs/remote_drivers/scaled_standardized_drivers.csv")
-
-#     ds = xr.open_dataset(target_path)
-#     regressors = pd.read_csv(driver_path, index_col=0)
-#     regressors.index = regressors.index.str.strip()
-
-#     ds_unique = ds.groupby('model').first()
-#     common_models = list(regressors.index.intersection(ds_unique['model'].values))
-
-#     if not common_models:
-#         raise ValueError("No common models found between NetCDF and CSV data.")
-
-#     ds_subset = ds_unique.sel(model=common_models).reindex(model=common_models)
-#     regressors_aligned = regressors.loc[common_models]
-#     regressor_names = regressors_aligned.columns.insert(0, 'MEM')
-
-#     SR = SpatialRegression()
-#     SR.regression_data(None, regressors_aligned, regressor_names)
-
-#     output_path = os.path.join(config["work_dir"], 'regression_output')
-#     os.makedirs(output_path, exist_ok=True)
-
-#     output_files = []
-
-#     for var in target_vars:
-#         if var not in ds_subset:
-#             print(f"Warning: Variable '{var}' not found in dataset.")
-#             continue
-
-#         target = ds_subset[var]
-#         SR = SpatialRegression()
-#         SR.regression_data(target, regressors_aligned, regressor_names)
-
-#         output_subdir = os.path.join(output_path, var)
-#         os.makedirs(output_subdir, exist_ok=True)
-    
-#         output_file = SR.perform_regression(output_path, var)
-#         output_files.append(output_file)
-#         print(f"Regression completed for: {var}")
-
-#     return output_files
-
 
 def compute_regression(config: dict) -> list[str]:
     from ._regres import SpatialRegression
@@ -157,7 +98,7 @@ def compute_regression(config: dict) -> list[str]:
 
     # Paths to input files
     target_path = os.path.join(config['work_dir'], f"target_{var}.nc")
-    driver_path = os.path.join(config['work_dir'], "storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv")
+    driver_path = os.path.join(config['work_dir'], "storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv")
 
     # Load dataset and regressors
     ds = xr.open_dataset(target_path)

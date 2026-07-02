@@ -77,22 +77,11 @@ Example usage:
 
 ----
 
-Stippling visualisation
------------------------
-
-.. currentmodule:: storypy.evaluate._stippling
-
-.. autofunction:: add_stippling
-
-.. note::
-
-   ``add_stippling`` is the low-level function called internally by ``plot_function`` to render significance markers onto a Cartopy axes. It uses ``ax.scatter`` rather than ``ax.plot`` to ensure correct rendering across all longitudes on non-PlateCarree projections (e.g. Robinson).
-
-----
-
 Storyline evaluation
 --------------------
 
-.. currentmodule:: storypy.evaluate._evaluate
+.. currentmodule:: storypy.evaluate._plotting
 
-.. autofunction:: evaluate_storylines
+.. automodule:: storypy.evaluate._plotting
+   :members: bivariate_dist, storyline_evaluation, regression_coefficient, make_symmetric_colorbar, create_multi_panel_figure, plot_storyline_map, plot_map, confidence_ellipse, plot_ellipse
+   :show-inheritance:

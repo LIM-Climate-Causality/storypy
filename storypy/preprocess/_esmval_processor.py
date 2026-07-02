@@ -2,7 +2,7 @@
 storypy.preprocess._esmval_processor
 ====================================
 
-Module for preprocessing CMIP6 data and associated drivers
+Module for preprocessing CMIP data and associated drivers
 using the ESMValTool configuration system. The `ESMValProcessor`
 class provides a high-level interface to read, process, and
 aggregate ensemble data directly from ESMValTool-compatible
@@ -42,8 +42,8 @@ import os
 import warnings
 from storypy.utils import np, xr
 
-from ._diagnostics import clim_change, seasonal_data_months, test_mean_significance
-from esmvaltool.diag_scripts.shared import run_diagnostic, get_cfg, group_metadata
+from ._diagnostics import clim_change, seasonal_data_months
+from esmvaltool.diag_scripts.shared import get_cfg, group_metadata
 from esmvaltool.diag_scripts.shared._base import _get_input_data_files
 
 def parse_config(file):
@@ -77,7 +77,7 @@ def parse_config(file):
 
 class ESMValProcessor:
     """
-    High-level processor for CMIP6 data using ESMValTool metadata.
+    High-level processor for CMIP data using ESMValTool metadata.
 
     This class handles loading, preprocessing, computing climatological
     changes, and generating plots for climate variables and remote drivers.
@@ -146,7 +146,6 @@ class ESMValProcessor:
         self._compute_bounding_box()
         # Unpack frequently used config values
         uc = self.main_config
-        # self.data_dir = uc['data_dir']
         self.work_dir = uc['work_dir']
         self.plot_dir = uc['plot_dir']
         self.region_method = uc["region_method"]
@@ -182,7 +181,12 @@ class ESMValProcessor:
         os.makedirs(self.config["plot_dir"], exist_ok=True)
 
     def _compute_bounding_box(self):
-        # Calculate and expand bounding box by 5 degrees
+        """
+        Compute and slightly expand the user-defined region bounding box.
+
+        Expands by ±5° and clips to the valid latitude/longitude range.
+        Updates ``self.uc['box']`` in place.
+        """
         extents = self.main_config['region_extents']
         all_lat_min = min(r[0] for r in extents)
         all_lat_max = max(r[1] for r in extents)
@@ -238,7 +242,7 @@ class ESMValProcessor:
 
                         if gw_seas.sizes['time'] > 100:
                             # Raw monthly data delivered by ESMValTool (general_preproc not
-                            # applied to GW) — compute anomaly relative to reference period,
+                            # applied to GW) - compute anomaly relative to reference period,
                             # then take future period mean. Mirrors _collect_scalar_drivers.
                             gw_ref    = gw_seas.sel(
                                 time=slice(int(self.period1[0]), int(self.period1[1]))
@@ -250,7 +254,7 @@ class ESMValProcessor:
                                 ).mean('time').values
                             )
                         else:
-                            # Pre-processed by ESMValTool (general_preproc applied to GW) —
+                            # Pre-processed by ESMValTool (general_preproc applied to GW) -
                             # file already contains future anomaly, just take the mean.
                             gw_scalar = float(gw_seas.mean(dim='time').values)
 
@@ -315,57 +319,7 @@ class ESMValProcessor:
                     except Exception as e:
                         print(f"Error processing driver '{var}' for alias '{alias}' in dataset '{dataset}': {e}")
     
-    # def _combine_and_save(self):
-    #     """
-    #     Average ensemble members per base model and save target NetCDF.
-    #     Produces one entry per base model name (e.g. 'ACCESS-CM2') to match
-    #     the one-per-model structure of the driver CSV from the colleague's
-    #     remote_drivers.py.
-    #     """
-    #     from collections import defaultdict
-
-    #     combined_vars = {}
-
-    #     for var in self.var_names:
-    #         if not self.ensemble_changes[var]:
-    #             print(f"Warning: no data collected for variable '{var}'")
-    #             continue
-
-    #         # Group DataArrays by base model name (strip variant suffix)
-    #         # e.g. 'ACCESS-CM2_r1i1p1f1' -> 'ACCESS-CM2'
-    #         groups = defaultdict(list)
-    #         for name, da in zip(self.all_model_names,
-    #                             self.ensemble_changes[var]):
-    #             base = name.split('_r')[0]   # split on '_r' to isolate base name
-    #             groups[base].append(da)
-
-    #         mean_per_model = []
-    #         model_names = []
-
-    #         for base_model, members in sorted(groups.items()):
-    #             if len(members) == 1:
-    #                 mean_da = members[0]
-    #             else:
-    #                 mean_da = xr.concat(
-    #                     members, dim='member'
-    #                 ).mean(dim='member')
-    #             mean_da = mean_da.expand_dims(model=[base_model])
-    #             mean_per_model.append(mean_da)
-    #             model_names.append(base_model)
-
-    #         combined_vars[var] = xr.concat(
-    #             mean_per_model, dim='model',
-    #             coords='minimal', compat='override'
-    #         )
-
-    #     combined_ds = xr.Dataset(combined_vars)
-    #     out_file = os.path.join(self.main_config['work_dir'], f'target_{var}.nc')
-    #     combined_ds.to_netcdf(out_file)
-    #     print(f"Saved {len(model_names)} base models to {out_file}")
-    #     print(f"Models: {sorted(model_names)}")
-    #     return combined_ds
-    
-    # New adaptation for variant selection strategy
+    # Adaptation for variant selection strategy
     def _combine_and_save(self):
         from collections import defaultdict
 
@@ -385,8 +339,8 @@ class ESMValProcessor:
 
             result_per_model = []
             model_names      = []
-            n_members_list   = []      # ← new
-            member_ids_list  = []      # ← new
+            n_members_list   = []
+            member_ids_list  = []
 
             for base_model, members in sorted(groups.items()):
 
@@ -395,17 +349,17 @@ class ESMValProcessor:
                 if self.variant_selection == 'last':
                     chosen_name    = members_sorted[-1][0]
                     chosen_da      = members_sorted[-1][1]
-                    member_aliases = [chosen_name]             # ← new
+                    member_aliases = [chosen_name]
 
                 elif self.variant_selection == 'first':
                     chosen_name    = members_sorted[0][0]
                     chosen_da      = members_sorted[0][1]
-                    member_aliases = [chosen_name]             # ← new
+                    member_aliases = [chosen_name]
 
                 elif self.variant_selection == 'mean':
                     das            = [da for _, da in members_sorted]
                     chosen_da      = xr.concat(das, dim='member').mean(dim='member')
-                    member_aliases = [name for name, _ in members_sorted]  # ← new
+                    member_aliases = [name for name, _ in members_sorted]
 
                 else:
                     raise ValueError(
@@ -413,21 +367,21 @@ class ESMValProcessor:
                         f"got '{self.variant_selection}'"
                     )
 
-                # ← new: always defined after the if/elif block
+                # Always defined after the if/elif block
                 n_members      = len(member_aliases)
                 member_ids_str = '|'.join(member_aliases)
 
                 print(f"  {base_model}: {self.variant_selection} → {n_members} member(s)")
 
                 chosen_da = chosen_da.expand_dims(model=[base_model])
-                chosen_da = chosen_da.assign_coords(        # ← new
+                chosen_da = chosen_da.assign_coords(
                     n_members  = ('model', [n_members]),
                     member_ids = ('model', [member_ids_str]),
                 )
                 result_per_model.append(chosen_da)
                 model_names.append(base_model)
-                n_members_list.append(n_members)            # ← new
-                member_ids_list.append(member_ids_str)      # ← new
+                n_members_list.append(n_members)
+                member_ids_list.append(member_ids_str)
 
             combined_vars[var] = xr.concat(
                 result_per_model, dim='model',
@@ -465,30 +419,6 @@ class ESMValProcessor:
         combined_driver_ds.to_netcdf(out_file)
         print(f"Saved all driver variable changes to {out_file}")
         return combined_driver_ds
-
-    # def _plot_spatial(self, combined):
-    #     from storypy.evaluate.plot import plot_function
-    #     # plot spatial maps for each variable
-    #     for var in self.var_names:
-    #         if self.ensemble_changes[var]:
-    #             arr = xr.concat(self.ensemble_changes[var], dim='model')
-    #             mean = arr.mean(dim='model')
-    #             if 'model' in arr.dims and arr.sizes['model'] > 1:
-    #                 pval = xr.apply_ufunc(
-    #                     test_mean_significance, arr,
-    #                     input_core_dims=[['model']], output_core_dims=[[]],
-    #                     vectorize=True, dask='parallelized'
-    #                 )
-    #             else:
-    #                 print("Only one model available; cannot compute p-values.")
-    #                 pval = None
-    #             pos = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
-    #                                                'number_of_models_positive_trend_CMIP6.nc'))
-    #             neg = xr.open_dataset(os.path.join(self.config['work_dir'], 'stippling',
-    #                                                'number_of_models_negative_trend_CMIP6.nc'))
-    #             fig = plot_function(mean, pval, pos, neg, self.region_extents)
-    #             if fig:
-    #                 fig.savefig(os.path.join(self.config['plot_dir'], f"beta_forced_{var}_plot.png"))
 
     def _plot_timeseries(self):
         from storypy.evaluate.plot import plot_precipitation_change

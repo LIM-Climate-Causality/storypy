@@ -48,4 +48,6 @@ storypy = [
     "data/regression_output/pr/*",
     "data/regression_output/ua/*",
     "data/remote_drivers/*.csv",
+    "data/targets/*.nc",
+    "data/drivers/*.nc",
 ]

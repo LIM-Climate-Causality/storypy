@@ -10,106 +10,6 @@ def create_arc(lon_min, lon_max, lat_min, lat_max, n_points=100):
     return Polygon(zip(lons_combined, lats_combined))
 
 # Plotting function with stippling
-# def plot_function(target_change, p_values, positives_model, negatives_model, region_extents, sig_level=0.05, sig=1):
-#     import cartopy.feature as cfeature
-
-#     plt.rcParams.update({
-#         "font.size": 18,
-#         "axes.titlesize": 18,
-#         "axes.labelsize": 18,
-#         "xtick.labelsize": 18,
-#         "ytick.labelsize": 18,
-#         "figure.titlesize": 20
-#     })
-
-#     # Determine the extent of the map based on `target_change`
-#     if 'region_extent' in target_change.attrs:
-#         extent = target_change.attrs['region_extent']
-#     else:
-#         # Default to global extent
-#         #extent = [-180, 180, -90, 90]
-#         extent = [0, 360, -90, 90]
-
-#     # Subset `target_change` to its actual extent
-#     target_change = target_change.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
-
-#     # Dynamically set extent based on `target_change` actual data bounds
-#     extent = [
-#         float(target_change['lon'].min()), float(target_change['lon'].max()),
-#         float(target_change['lat'].min()), float(target_change['lat'].max())
-#     ]
-
-#     # Align all datasets to the same grid as `target_change`
-#     if p_values is not None:
-#         print("Aligning p_values...")
-#         p_values = p_values.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
-#         #p_values = p_values.interp_like(target_change)  # Align to `target_change`
-
-#     if positives_model is not None and negatives_model is not None:
-#         print("Aligning positives_model and negatives_model...")
-#         positives_model_da = positives_model['pr']  # Replace 'pr' with the correct variable name
-#         negatives_model_da = negatives_model['pr']  # Replace 'pr' with the correct variable name
-
-#         # Subset their coordinates to match the extent
-#         positives_model_da = positives_model_da.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
-#         negatives_model_da = negatives_model_da.sel(lon=slice(extent[0], extent[1]), lat=slice(extent[2], extent[3]))
-
-#         # Interpolate to match `target_change`
-#         #positives_model_da = positives_model_da.interp_like(target_change)
-#         #negatives_model_da = negatives_model_da.interp_like(target_change)
-
-#     import matplotlib as mpl
-#     mpl.rcParams['hatch.linewidth'] = 0.5
-#     mpl.rcParams['hatch.color'] = 'black'
-
-#     # Initialize the plot
-#     fig, ax = plt.subplots(figsize=(15, 20), subplot_kw={'projection': ccrs.PlateCarree()})
-#     ax.set_extent(extent, crs=ccrs.PlateCarree())
-#     ax.add_feature(cfeature.COASTLINE.with_scale('50m'), edgecolor='black', linewidth=0.7)
-#     ax.add_feature(cfeature.BORDERS.with_scale('50m'), linestyle='--', edgecolor='gray')
-
-#     # Plot `target_change` as the main contour
-#     target_change.plot.contourf(
-#         ax=ax,
-#         transform=ccrs.PlateCarree(),
-#         cmap='PuOr',
-#         levels=20,
-#         add_colorbar=True,
-#         cbar_kwargs={'shrink': 0.7, 'label': 'Precipitation Change (mm/day)', "fraction": 0.03, "pad": 0.02,}
-#     )
-
-#     # Drawing arcs for the specified regions
-#     for extent in region_extents:
-#         arc = create_arc(extent[2], extent[3], extent[0], extent[1])  # assuming extents are (lat_min, lat_max, lon_min, lon_max)
-#         ax.add_geometries([arc], crs=ccrs.PlateCarree(), edgecolor='blue', facecolor='none', linewidth=2)
-
-#     # Add stippling for `p_values` (significance)
-#     if p_values is not None and p_values.size > 0:
-#         print("Adding p_values stippling...")
-#         sig_mask = p_values < sig_level
-#         ax.contourf(
-#             p_values['lon'], p_values['lat'], sig_mask,
-#             levels=[0.5, 1], hatches=['o', ''], colors='none',
-#             transform=ccrs.PlateCarree()
-#         )
-
-#     # Add stippling for `positives_model` and `negatives_model`
-#     if positives_model is not None and negatives_model is not None:
-#         print("Adding positives/negatives stippling...")
-#         combined = (positives_model_da + negatives_model_da) == sig
-#         ax.contourf(
-#             positives_model_da['lon'], positives_model_da['lat'], combined,
-#             levels=[0.5, 1], hatches=['.', ''], colors='none',
-#             transform=ccrs.PlateCarree()
-#         )
-
-#     # Add title and gridlines
-#     ax.set_title("End of century changes in winter (NDJFM) precipitation in CMIP6 high-emission scenario")
-#     gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', alpha=0.7, linestyle='--')
-#     gl.top_labels = gl.right_labels = False
-
-#     return fig
-
 def plot_function(target_change, p_values, positives_model, negatives_model, region_extents,
                   sig_level=0.05, sig=1, map_extent=None, projection='platecarree'):
     import cartopy.feature as cfeature
@@ -213,7 +113,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
     if positives_model is not None and negatives_model is not None \
             and p_values is not None:
  
-        # Beta mask — models agree on sign
+        # Beta mask — models agree on sign ------------------------------------------------------------------
         beta_mask  = (positives_model_da + negatives_model_da) == sig
  
         # Gamma mask — signal large relative to noise
@@ -233,33 +133,33 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             positives_model_da['lat'].values
         )
  
-        # Robust: beta AND gamma → filled dots
-        robust = (beta_mask & gamma_mask).values
-        if robust.any():
-            ax.scatter(
-                lon2d[robust], lat2d[robust],
-                color='black', s=8,
-                transform=ccrs.PlateCarree(), zorder=5,
-            )
-            legend_handles.append(
-                mlines.Line2D([0], [0], marker='.', color='black',
-                              linestyle='None', markersize=6,
-                              label='Robust (β ≥ 90% and γ > 1)')
-            )
- 
         # Large but non-robust: gamma only → open circles
-        large_nonrobust = (~beta_mask & gamma_mask).values
+        large_nonrobust = gamma_mask.values
         if large_nonrobust.any():
             ax.scatter(
                 lon2d[large_nonrobust], lat2d[large_nonrobust],
-                s=18, facecolors='none', edgecolors='black', linewidths=0.8,
-                transform=ccrs.PlateCarree(), zorder=5,
+                s=40, facecolors='none', edgecolors='black', linewidths=0.8,
+                transform=ccrs.PlateCarree(), zorder=4,
             )
             legend_handles.append(
                 mlines.Line2D([0], [0], marker='o', color='black',
                               linestyle='None', markersize=6,
                               markerfacecolor='none',
-                              label='Large but non-robust (γ > 1 only)')
+                              label='Large signal (γ > 1)')
+            )
+
+        # Robust: beta AND gamma → filled dots
+        robust = beta_mask.values
+        if robust.any():
+            ax.scatter(
+                lon2d[robust], lat2d[robust],
+                color='black', s=10,
+                transform=ccrs.PlateCarree(), zorder=5,
+            )
+            legend_handles.append(
+                mlines.Line2D([0], [0], marker='.', color='black',
+                              linestyle='None', markersize=6,
+                              label='Robust (β ≥ 90%)')
             )
  
     elif positives_model is not None and negatives_model is not None:

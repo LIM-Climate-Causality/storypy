@@ -21,7 +21,7 @@ def read_data(filename):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# Functions that utilize read_data to to load dataset
+# Functions that utilize read_data to load dataset
 
 def read_pr_R2():
     return read_data('data/regression_output/pr/R2.nc')
@@ -46,7 +46,7 @@ def read_ua_regression_coefficients_pvalues():
     return read_data('data/regression_output/ua/regression_coefficients_pvalues.nc')
 
 def read_ua_regression_coefficients_relative_importance():
-    return read_data('data/regression_output/ua//regression_coefficients_relative_importance.nc')
+    return read_data('data/regression_output/ua/regression_coefficients_relative_importance.nc')
 
 
 # Reading csv files
