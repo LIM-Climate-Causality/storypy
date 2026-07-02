@@ -5,7 +5,7 @@ storypy.data module
 
 This module provides functions for loading sample datasets bundled with storypy, including pre-computed regression outputs, target climate change fields, spatial driver fields, and tabular driver indices.
 
-All data files are stored under ``storypy/data/`` and accessed via :mod:`importlib.resources`. No file paths are required — all datasets are loaded by name using the functions below.
+All data files are stored under ``storypy/data/`` and accessed via :mod:`importlib.resources`. No file paths are required - all datasets are loaded by name using the functions below.
 
 ----
 
@@ -61,6 +61,9 @@ Quick reference
    * - :func:`list_targets() <storypy.data.list_targets>`
      - ``list``
      - List all available target files bundled with storypy
+   * - :func:`list_drivers() <storypy.data.list_drivers>`
+     - ``list``
+     - List all available driver files bundled with storypy
    * - :func:`read_regression(variable, diagnostic) <storypy.data.read_regression>`
      - ``xr.Dataset``
      - Pre-computed regression output for a given variable and diagnostic
@@ -135,7 +138,7 @@ Available diagnostics:
    * - ``'regression_coefficients_pvalues'``
      - p-values associated with each regression coefficient
    * - ``'regression_coefficients_relative_importance'``
-     - Relative importance of each driver (LMG metric)
+     - Relative importance of each driver
    * - ``'R2'``
      - Coefficient of determination at each gridpoint
 
@@ -143,19 +146,16 @@ Example:
 
 .. code-block:: python
 
-   from storypy.data import load_change_field, load_driver_field, list_targets, list_drivers
-
-   # List existing target fields
-   targets = list_targets()
-
-   # List existing driver fields
-   drivers = list_drivers()
-
-   # Load the Zappa & Shepherd 2017 winter precipitation change
-   pr_change = load_change_field('zs17', 'pr', 'NDJFM')
-
-   # Load the raw driver spatial field for Monerie 2023
-   driver_zs17 = load_driver_field('zs17')
+   from storypy.data import read_regression
+ 
+   # Load precipitation regression coefficients
+   coefs = read_regression('pr')
+ 
+   # Load u850 R² field
+   r2 = read_regression('ua', diagnostic='R2')
+ 
+   # Load p-values for precipitation
+   pvals = read_regression('pr', diagnostic='regression_coefficients_pvalues')
 
 ----
 

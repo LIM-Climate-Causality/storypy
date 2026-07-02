@@ -163,9 +163,9 @@ def load_change_field(study: str, variable: str, season: str) -> xr.Dataset:
     study : str
         Study identifier. Available options:
 
-        - ``'zs17'`` — Zappa & Shepherd (2017)
-        - ``'mindlin20'`` — Mindlin et al. (2020)
-        - ``'monerie23'`` — Monerie et al. (2023)
+        - ``'zs17'`` - Zappa & Shepherd (2017)
+        - ``'mindlin20'`` - Mindlin et al. (2020)
+        - ``'monerie23'`` - Monerie et al. (2023)
 
     variable : str
         Variable name, e.g. ``'pr'``, ``'u850'``.
