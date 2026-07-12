@@ -170,7 +170,7 @@ About the authors
 Get in touch
 ------------
 
-If you have suggestions on additional methods we could add, questions you'd like to ask, issues that you are finding in the application of the methods that are already implemented, or bugs in the code, please contact us under ...@gmail.com or `raise an issue on github <https://github.com/LIM-Climate-Causality/storypy/issues>`_.
+If you have suggestions on additional methods we could add, questions you'd like to ask, issues that you are finding in the application of the methods that are already implemented, or bugs in the code, please contact us under richard.alawode@uni-leipzig.de or `raise an issue on github <https://github.com/LIM-Climate-Causality/storypy/issues>`_.
 
 Cite the package
 ----------------
