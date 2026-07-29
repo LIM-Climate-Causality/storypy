@@ -105,6 +105,23 @@ def compute_regression(config: dict) -> list[str]:
     regressors = pd.read_csv(driver_path, index_col=0)
     regressors.index = regressors.index.str.strip()
 
+    # Driver selection
+    selected_drivers = config.get("drivers", None)
+    if selected_drivers is not None:
+        if isinstance(selected_drivers, str):
+            selected_drivers = [selected_drivers]
+        missing = [d for d in selected_drivers if d not in regressors.columns]
+        if missing:
+            raise ValueError(
+                f"The following drivers were requested but not found in the "
+                f"driver CSV: {missing}. "
+                f"Available drivers: {regressors.columns.tolist()}"
+            )
+        regressors = regressors[selected_drivers]
+        print(f"Using {len(selected_drivers)} selected drivers: {selected_drivers}")
+    else:
+        print(f"Using all {len(regressors.columns)} drivers: {regressors.columns.tolist()}")
+
     # Match models
     ds_unique = ds.groupby('model').first()
     common_models = list(regressors.index.intersection(ds_unique['model'].values))
