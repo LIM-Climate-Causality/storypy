@@ -164,6 +164,55 @@ def compute_drivers(driver_config):
         df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
         df_standardized.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
 
+        # Option B: read per-member std from remote_driver_{var}.nc files
+        # These are saved by _combine_and_save_drivers when members > 1
+        errors_raw    = {}
+        errors_scaled = {}
+        driver_dir    = os.path.dirname(drivers_path)   # dir containing drivers.nc
+ 
+        for sn in df_raw.columns:
+            std_key   = f"{sn}_std"
+            remote_nc = os.path.join(driver_dir, f"remote_driver_{sn}.nc")
+ 
+            if os.path.exists(remote_nc):
+                ds_drv = xr.open_dataset(remote_nc)
+                if std_key in ds_drv:
+                    da_std = ds_drv[std_key]
+                    # Cosine-latitude weighted spatial mean → scalar per model
+                    if "lat" in da_std.dims and "lon" in da_std.dims:
+                        lat_w  = np.cos(np.deg2rad(da_std["lat"]))
+                        da_std = da_std.weighted(lat_w).mean(("lat", "lon"))
+                    # Align to df_raw model index
+                    std_vals = []
+                    for m in df_raw.index:
+                        try:
+                            std_vals.append(float(da_std.sel(model=m)))
+                        except Exception:
+                            std_vals.append(0.0)
+                    errors_raw[sn] = std_vals
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        errors_scaled[sn] = [
+                            v / g if g != 0 else 0.0
+                            for v, g in zip(std_vals, gw_vals)
+                        ]
+                    non_zero = sum(v > 0 for v in std_vals)
+                    print(f"  Loaded {std_key} from remote_driver_{sn}.nc "
+                          f"({non_zero}/{len(std_vals)} models with std > 0)")
+                else:
+                    print(f"  {std_key} not in {remote_nc}; using zeros for {sn}")
+                    errors_raw[sn]    = [0.0] * len(df_raw)
+                    errors_scaled[sn] = [0.0] * len(df_raw)
+            else:
+                print(f"  remote_driver_{sn}.nc not found; using zeros for {sn}")
+                errors_raw[sn]    = [0.0] * len(df_raw)
+                errors_scaled[sn] = [0.0] * len(df_raw)
+ 
+        df_errors        = pd.DataFrame(errors_raw,    index=df_raw.index)
+        df_errors_scaled = pd.DataFrame(errors_scaled, index=df_raw.index)
+        df_errors.to_csv(       os.path.join(out_dir, "drivers_errors.csv"))
+        df_errors_scaled.to_csv(os.path.join(out_dir, "scaled_drivers_errors.csv"))
+        print(f"Saved driver uncertainty to: {out_dir}")
+
         print(f"Loaded drivers from {drivers_path} and saved indices to: {out_dir}")
         return df_raw, df_scaled, df_standardized
 
@@ -278,8 +327,62 @@ def compute_drivers(driver_config):
     df_raw.to_csv(os.path.join(out_dir, "drivers.csv"))
     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
     df_standardized.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
-
     print(f"Saved driver regressors to: {out_dir}")
+
+    # Read per-member std from remote_driver_{var}.nc files
+    errors_raw    = {}
+    errors_scaled = {}
+
+    for sn in df_raw.columns:
+        std_key   = f"{sn}_std"
+        remote_nc = os.path.join(work_dir, f"remote_driver_{sn}.nc")
+        if not os.path.exists(remote_nc):
+            remote_nc = os.path.join(work_dir, "remote_drivers",
+                                     f"remote_driver_{sn}.nc")
+        if os.path.exists(remote_nc):
+            ds_drv = xr.open_dataset(remote_nc).load()
+            ds_drv.close()
+            if std_key in ds_drv:
+                da_std = ds_drv[std_key]
+                if "lat" in da_std.dims and "lon" in da_std.dims:
+                    lat_w  = np.cos(np.deg2rad(da_std["lat"]))
+                    da_std = da_std.weighted(lat_w).mean(("lat", "lon"))
+                std_vals = []
+                for m in df_raw.index:
+                    try:
+                        std_vals.append(float(da_std.sel(model=m)))
+                    except Exception:
+                        std_vals.append(0.0)
+                errors_raw[sn] = std_vals
+                # Scale by GW — reuse gw_vals already in scope
+                gw_array = np.array([
+                    float(gw_vals.sel(model=m))
+                    if m in gw_vals['model'].values else np.nan
+                    for m in df_raw.index
+                ])
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    errors_scaled[sn] = [
+                        v / g if (g and g != 0 and not np.isnan(g)) else 0.0
+                        for v, g in zip(std_vals, gw_array)
+                    ]
+                non_zero = sum(v > 0 for v in std_vals)
+                print(f"  Loaded {std_key} from remote_driver_{sn}.nc "
+                      f"({non_zero}/{len(std_vals)} models with std > 0)")
+            else:
+                print(f"  {std_key} not in {remote_nc}; using zeros for {sn}")
+                errors_raw[sn]    = [0.0] * len(df_raw)
+                errors_scaled[sn] = [0.0] * len(df_raw)
+        else:
+            print(f"  remote_driver_{sn}.nc not found; using zeros for {sn}")
+            errors_raw[sn]    = [0.0] * len(df_raw)
+            errors_scaled[sn] = [0.0] * len(df_raw)
+
+    df_errors        = pd.DataFrame(errors_raw,    index=df_raw.index)
+    df_errors_scaled = pd.DataFrame(errors_scaled, index=df_raw.index)
+    df_errors.to_csv(       os.path.join(out_dir, "drivers_errors.csv"))
+    df_errors_scaled.to_csv(os.path.join(out_dir, "scaled_drivers_errors.csv"))
+    print(f"Saved driver uncertainty to: {out_dir}")
+
     return df_raw, df_scaled, df_standardized
 
 
@@ -407,6 +510,8 @@ def _collect_scalar_drivers(meta, work_dir,
                 values.append(val)
 
             ts_dict[var] = float(np.mean(values))
+            ts_dict[f"{var}_std"] = float(np.std(values, ddof=0)) \
+                                     if len(values) > 1 else 0.0
 
         if "gw" in ts_dict:
             rd_list.append(ts_dict)
@@ -423,6 +528,8 @@ def _collect_scalar_drivers(meta, work_dir,
         print(f"Saved drivers to {drivers_nc} "
               f"(variant_selection='{variant_selection}', "
               f"season_months={season_months})")
+        # Build and save per-model uncertainty (std across members)
+        # _save_driver_errors(rd_list, models, out_dir)
     else:
         print("No models with 'gw' found; NetCDF not written.")
 
@@ -451,6 +558,52 @@ def _build_drivers_dataset(rd_list, models):
         vals = [d.get(var, np.nan) for d in rd_list]
         data_vars[var] = ("model", np.asarray(vals, dtype=np.float64))
     return xr.Dataset(data_vars, coords={"model": models})
+
+def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
+    """
+    Build and save per-model driver uncertainty (std across ensemble members).
+ 
+    For multi-member models the std across members is non-zero.
+    For single-member models the std is 0.
+ 
+    Parameters
+    ----------
+    rd_list : list[dict]
+        One dict per model containing driver values and their
+        ``{var}_std`` counterparts (as produced by _collect_scalar_drivers).
+    models : list[str]
+        Model names aligned with rd_list.
+    out_dir : str
+        Directory where CSV files are written.
+    gw_vals : array-like, optional
+        Global warming values per model for scaling errors.
+        If provided, saves ``scaled_drivers_errors.csv`` as well.
+    """
+    # Collect std keys
+    all_keys = list(rd_list[0].keys())
+    std_keys = [k for k in all_keys if k.endswith("_std") and k != "gw_std"]
+    if not std_keys:
+        print("No per-member std values found; skipping error CSV.")
+        return
+ 
+    errors_raw = {}
+    for key in std_keys:
+        driver_name = key[:-4]   # strip '_std'
+        errors_raw[driver_name] = [d.get(key, 0.0) for d in rd_list]
+ 
+    df_errors = pd.DataFrame(errors_raw, index=models)
+    df_errors.to_csv(os.path.join(out_dir, "drivers_errors.csv"))
+    print(f"Saved driver uncertainty to {out_dir}/drivers_errors.csv")
+ 
+    if gw_vals is not None:
+        gw = np.asarray(gw_vals, dtype=float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            df_errors_scaled = df_errors.div(gw, axis=0)
+        df_errors_scaled.to_csv(
+            os.path.join(out_dir, "scaled_drivers_errors.csv")
+        )
+        print(f"Saved scaled driver uncertainty to "
+              f"{out_dir}/scaled_drivers_errors.csv")
 
 def driver_indices(config):
     """
@@ -491,6 +644,9 @@ def driver_indices(config):
     if "gw" in regressor_names:
         regressor_names.remove("gw")
 
+    # Remove _std keys — handled separately by _save_driver_errors
+    regressor_names = [r for r in regressor_names if not r.endswith("_std")]
+
     regressors_scaled = {}
     regressors        = {}
 
@@ -520,6 +676,11 @@ def driver_indices(config):
     df_stand.to_csv(os.path.join(out_dir, "scaled_standardized_drivers.csv"))
     df_raw.to_csv(  os.path.join(out_dir, "drivers.csv"))
     df_scaled.to_csv(os.path.join(out_dir, "scaled_drivers.csv"))
+
+    # Save per-model uncertainty (std across members)
+    gw_vals_arr = np.array([rd_list[i]["gw"] for i in range(len(rd_list))],
+                            dtype=float)
+    _save_driver_errors(rd_list, models, out_dir, gw_vals=gw_vals_arr)
 
     print(f"Saved driver indices (variant_selection="
           f"'{config.get('variant_selection','mean')}', "

@@ -8,7 +8,7 @@ This module provides :func:`compute_regression`, which ties together:
 
 * target fields from a NetCDF file (``target_<var>.nc``), and
 * standardized remote drivers from a CSV file
-  (``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``),
+  (``storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv``),
 
 and runs a spatial regression SR via :class:`storypy.compute._regres.SpatialRegression`.
 
@@ -42,7 +42,7 @@ def compute_regression(config: dict) -> list[str]:
 
     This function loads a target field from ``target_<var>.nc``, aligns it
     with standardized driver indices from
-    ``storyline_analysis/multiple_regresion/remote_drivers/scaled_standardized_drivers.csv``,
+    ``storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv``,
     and performs a spatial regression at each gridpoint using
     :class:`storypy.compute._regres.SpatialRegression`.
 
@@ -77,7 +77,7 @@ def compute_regression(config: dict) -> list[str]:
     -----
     * The driver CSV is expected at::
 
-          <work_dir>/storyline_analysis/multiple_regresion/remote_drivers/
+          <work_dir>/storyline_analysis/multiple_regression/remote_drivers/
               scaled_standardized_drivers.csv
 
     * The regression is fit across the ``model`` dimension.
@@ -98,7 +98,10 @@ def compute_regression(config: dict) -> list[str]:
 
     # Paths to input files
     target_path = os.path.join(config['work_dir'], f"target_{var}.nc")
-    driver_path = os.path.join(config['work_dir'], "storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv")
+    from storypy.utils import find_driver_csv
+    driver_path = find_driver_csv(
+        config['work_dir'], explicit=config.get('driver_csv')
+    )
 
     # Load dataset and regressors
     ds = xr.open_dataset(target_path)

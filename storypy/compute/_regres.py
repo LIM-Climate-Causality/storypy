@@ -96,57 +96,76 @@ class SpatialRegression(object):
     def linear_regression(self,x):
         """
         Fit an OLS regression for a single gridpoint.
-
+ 
+        NaN values in x (e.g. models that mask 850 hPa below ground over
+        Greenland) are dropped per-gridpoint before fitting. Each gridpoint
+        is fitted on only the models with valid data, which is statistically
+        correct and avoids imputation bias. If fewer than rd_num + 1 valid
+        models remain, NaN coefficients are returned.
+ 
         Parameters
         ----------
         x : array-like
             Target values over models for one gridpoint.
-
+ 
         Returns
         -------
         tuple
-            Regression coefficients (one per regressor).
+            Regression coefficients (one per regressor), or NaN if
+            insufficient valid data at this gridpoint.
         """
         y = self.regression_y
-        res = sm.OLS(x,y).fit()
+        valid = ~np.isnan(x)
+        if valid.sum() <= self.rd_num:
+            return tuple([np.nan] * self.rd_num)
+        res = sm.OLS(x[valid], y[valid]).fit()
         returns = [res.params[i] for i in range(self.rd_num)]
         return tuple(returns)
 
     def linear_regression_pvalues(self,x):
         """
         Compute p-values for each regressor at a single gridpoint.
-
+        NaN models are dropped before fitting (same as linear_regression).
+ 
         Parameters
         ----------
         x : array-like
             Target values over models.
-
+ 
         Returns
         -------
         tuple
-            p-values associated with each regression coefficient.
+            p-values associated with each regression coefficient, or NaN
+            if insufficient valid data.
         """
         y = self.regression_y
-        res = sm.OLS(x,y).fit()
+        valid = ~np.isnan(x)
+        if valid.sum() <= self.rd_num:
+            return tuple([np.nan] * self.rd_num)
+        res = sm.OLS(x[valid], y[valid]).fit()
         returns = [res.pvalues[i] for i in range(self.rd_num)]
         return tuple(returns)
     
     def linear_regression_R2(self,x):
         """
-        Compute the coefficient of determination (R²) for a gridpoint.
-
+        Compute the coefficient of determination (R2) for a gridpoint.
+        NaN models are dropped before fitting (same as linear_regression).
+ 
         Parameters
         ----------
         x : array-like
             Target values over models.
-
+ 
         Returns
         -------
         float
-            R² for the OLS fit.
+            R2 for the OLS fit, or NaN if insufficient valid data.
         """
         y = self.regression_y
-        res = sm.OLS(x,y).fit()
+        valid = ~np.isnan(x)
+        if valid.sum() <= self.rd_num:
+            return np.nan
+        res = sm.OLS(x[valid], y[valid]).fit()
         return res.rsquared
     
     def linear_regression_relative_importance(self,x):
@@ -214,21 +233,21 @@ class SpatialRegression(object):
         None
             Results are written to disk.
         """
-        target_var = xr.apply_ufunc(replace_nans_with_zero, self.target)
-        results = xr.apply_ufunc(self.linear_regression,target_var,input_core_dims=[["model"]],
+        # target_var = xr.apply_ufunc(replace_nans_with_zero, self.target)
+        results = xr.apply_ufunc(self.linear_regression,self.target,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num)],
                                  vectorize=True,
                                  dask="parallelized")
-        results_pvalues = xr.apply_ufunc(self.linear_regression_pvalues,target_var,input_core_dims=[["model"]],
+        results_pvalues = xr.apply_ufunc(self.linear_regression_pvalues,self.target,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num)],
                                  vectorize=True,
                                  dask="parallelized")
-        results_R2 = xr.apply_ufunc(self.linear_regression_R2,target_var,input_core_dims=[["model"]],
+        results_R2 = xr.apply_ufunc(self.linear_regression_R2,self.target,input_core_dims=[["model"]],
                                  output_core_dims=[[]],
                                  vectorize=True,
                                  dask="parallelized")
         
-        relative_importance = xr.apply_ufunc(self.linear_regression_relative_importance,target_var,input_core_dims=[["model"]],
+        relative_importance = xr.apply_ufunc(self.linear_regression_relative_importance,self.target,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num-1)],
                                  vectorize=True,
                                  dask="parallelized")
@@ -563,14 +582,17 @@ def stand(dato):
     anom = (dato - np.mean(dato))/np.std(dato)
     return anom
 
+# def replace_nans_with_zero(x):
+#     # Replace NaNs with the mean of valid values at this gridpoint
+#     # so missing models don't bias the regression
+#     mean_val = np.nanmean(x)
+#     if np.isnan(mean_val):
+#         # All models are NaN at this gridpoint - return zeros
+#         return np.zeros_like(x)
+#     return np.where(np.isnan(x), mean_val, x)
+
 def replace_nans_with_zero(x):
-    # Replace NaNs with the mean of valid values at this gridpoint
-    # so missing models don't bias the regression
-    mean_val = np.nanmean(x)
-    if np.isnan(mean_val):
-        # All models are NaN at this gridpoint - return zeros
-        return np.zeros_like(x)
-    return np.where(np.isnan(x), mean_val, x)
+    return np.where(np.isnan(x), random.random(), x)
 
 def figure(target,predictors):
     fig = plt.figure()

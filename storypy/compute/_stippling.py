@@ -248,7 +248,7 @@ class StipplingComputer:
         - ``gamma_forced_CMIP6.nc`` : median signal-to-noise ratio across
         models (f = signal / noise).
         - ``summatory_denom_CMIP6.nc`` : sum of ``1 / noise^2`` across all
-        models, used as the denominator weight in the Zappa & Shepherd
+        models, used as the denominator weight in the Mindlin et al. (2023)
         significance formula.
  
         Parameters
@@ -271,10 +271,13 @@ class StipplingComputer:
                 "Run ESMValProcessor.process_var() first."
             )
         target_ds     = xr.open_dataset(target_path)
-        forced_signal = target_ds[self.var].mean(dim='model')
+        # Per-model forced response for Mindlin et al. (2023)
+        forced_signal_per_model = target_ds[self.var]   # (model, lat, lon)
  
-        gamma_list       = []
-        summatory_list   = []   # accumulates 1/noise^2 per model
+        gamma_list        = []   # beta_m^2 / sigma_m^2 per model
+        sigma_hat_sq_list = []   # variance of 30-yr means per model
+        sigma_sq_list     = []   # mean rolling 30-yr variance per model
+        summatory_list    = []   # 1/noise^2 per model
  
         for model, members in sorted(model_data.items()):
  
@@ -310,52 +313,84 @@ class StipplingComputer:
                     )
                     continue
  
-                # Internal variability (noise): std of non-overlapping piControl rolling means
+                # sigma_hat_m^2: variance of non-overlapping 30-yr means
                 rolling_mean = (
                     da.rolling(time=rolling_window, center=True)
                     .mean()
                     .dropna('time')
                 )
-                non_overlap = rolling_mean.isel(
+                non_overlap  = rolling_mean.isel(
                     time=slice(0, None, rolling_window)
                 )
-                noise = non_overlap.std(dim='time')
- 
-                # Wrap noise lons to -180/180 before interp so it aligns
-                # with forced_signal (which is already in -180/180 convention)
-                if noise['lon'].values.max() > 180:
-                    noise = noise.assign_coords(
-                        lon=((noise['lon'].values + 180) % 360 - 180)
+                sigma_hat_m2 = non_overlap.var(dim='time')   # (lat, lon)
+
+                # With seasonal mean data, sigma_m^2 = sigma_hat_m^2
+                # (both are inter-annual variance of seasonal means)
+                # f_bar = sigma_hat^2/sigma^2 = 1, so we set it to 0
+                # reducing A1 to: gamma = sqrt(mean(beta_m^2/sigma_hat_m^2))
+                sigma_m2 = sigma_hat_m2
+
+                # Wrap lons to -180/180 before interp
+                if sigma_m2['lon'].values.max() > 180:
+                    sigma_hat_m2 = sigma_hat_m2.assign_coords(
+                        lon=((sigma_hat_m2['lon'].values + 180) % 360 - 180)
+                    ).sortby('lon')
+                    sigma_m2 = sigma_m2.assign_coords(
+                        lon=((sigma_m2['lon'].values + 180) % 360 - 180)
+                    ).sortby('lon')
+
+                # beta_m: per-model forced response
+                if model in forced_signal_per_model['model'].values:
+                    beta_m        = forced_signal_per_model.sel(model=model)
+                    beta_m_interp = beta_m.interp_like(sigma_m2)
+                else:
+                    print(f"  Model {model} not in target file; skipping.")
+                    continue
+
+                # beta_m^2 / sigma_m^2 (Zappa et al. A1 summatory term)
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    ratio = xr.where(
+                        sigma_m2 > 0,
+                        (beta_m_interp ** 2) / sigma_m2,
+                        np.nan
                     )
-                    noise = noise.sortby('lon')
- 
-                # Forced signal: MEM change from target_pr.nc interpolated to piControl grid
-                signal = forced_signal.interp_like(noise)
- 
-                # Gamma = |forced signal| / piControl noise
-                gamma = xr.where(noise > 0, np.abs(signal) / noise, np.nan)
-                # 1/noise^2 — denominator weight (original: summatory_denom)
-                inv_noise2 = xr.where(noise > 0, 1.0 / (noise ** 2), np.nan)
- 
-                model_gammas.append(gamma)
+                inv_noise2 = xr.where(sigma_m2 > 0, 1.0 / sigma_m2, np.nan)
+
+                model_gammas.append(ratio)
                 model_inv_noise.append(inv_noise2)
+
+                self._sigma_hat_sq_buf = getattr(self, '_sigma_hat_sq_buf', [])
+                self._sigma_sq_buf     = getattr(self, '_sigma_sq_buf',     [])
+                self._sigma_hat_sq_buf.append(sigma_hat_m2)
+                self._sigma_sq_buf.append(sigma_m2)
  
             if not model_gammas:
                 print(f"  No valid gamma for {model}, skipping.")
                 continue
  
             # Average across variants for this model
-            if len(model_gammas) == 1:
-                model_gamma     = model_gammas[0]
+            n = len(model_gammas)
+            if n == 1:
+                model_ratio      = model_gammas[0]
                 model_inv_noise2 = model_inv_noise[0]
+                model_sigma_hat2 = self._sigma_hat_sq_buf[-1]
+                model_sigma2     = self._sigma_sq_buf[-1]
             else:
-                model_gamma      = (xr.concat(model_gammas, dim='variant')
+                model_ratio      = (xr.concat(model_gammas, dim='variant')
                                     .mean(dim='variant'))
                 model_inv_noise2 = (xr.concat(model_inv_noise, dim='variant')
                                     .mean(dim='variant'))
+                model_sigma_hat2 = (xr.concat(
+                    self._sigma_hat_sq_buf[-n:], dim='variant'
+                ).mean(dim='variant'))
+                model_sigma2     = (xr.concat(
+                    self._sigma_sq_buf[-n:], dim='variant'
+                ).mean(dim='variant'))
  
-            gamma_list.append(model_gamma)
+            gamma_list.append(model_ratio)
             summatory_list.append(model_inv_noise2)
+            sigma_hat_sq_list.append(model_sigma_hat2)
+            sigma_sq_list.append(model_sigma2)
             print(
                 f"  Gamma computed for {model} "
                 f"({len(model_gammas)} variant(s))"
@@ -367,15 +402,32 @@ class StipplingComputer:
                 "files were loaded correctly and have sufficient time steps."
             )
  
-        # Median gamma across models
-        gamma_stack  = xr.concat(gamma_list, dim='model')
-        gamma_median = gamma_stack.median(dim='model')
-        gamma_median.name = 'gamma'
+        # Mindlin et al. (2023) equation
+        # Step 1: mean( beta_m^2 / sigma_m^2 ) across models
+        ratio_stack = xr.concat(gamma_list, dim='model')
+        mean_ratio  = ratio_stack.mean(dim='model')
  
-        # Sum of 1/noise^2 across models — matches original summatory_denom
+        # Step 2: f_bar = 0 since sigma_hat^2 = sigma^2 with seasonal mean data
+        f_bar = xr.zeros_like(mean_ratio)
+        
+        # Step 3: gamma_forced = sqrt( mean_ratio - 2*f_bar )
+        inner        = mean_ratio - 2 * f_bar
+        gamma_median = np.sqrt(inner.clip(min=0))
+        gamma_median.name = 'gamma'
+        print(f"  gamma_forced: min={float(gamma_median.min()):.3f}, "
+              f"max={float(gamma_median.max()):.3f}, "
+              f"fraction>1: "
+              f"{float((gamma_median > 1).mean()):.1%}")
+ 
+        # Sum of 1/noise^2 across models
         summatory_stack = xr.concat(summatory_list, dim='model')
         summatory_denom = summatory_stack.sum(dim='model')
         summatory_denom.name = 'summatory_denom'
+ 
+        # Clean up temporary buffers
+        for attr in ('_sigma_hat_sq_buf', '_sigma_sq_buf'):
+            if hasattr(self, attr):
+                delattr(self, attr)
  
         gamma_median = gamma_median.assign_coords(
             lon=(gamma_median.lon.values + 180) % 360 - 180
