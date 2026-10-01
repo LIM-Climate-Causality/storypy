@@ -267,6 +267,10 @@ class ESMValProcessor:
                         norm.attrs['member_id'] = alias
                         self.ensemble_changes[var].append(norm)
                         self.time_series_changes[var].append(norm_ts)
+                        # Store member-to-model mapping for plotting
+                        if not hasattr(self, 'member_model_map'):
+                            self.member_model_map = {var: [] for var in self.var_names}
+                        self.member_model_map[var].append(dataset)
                     except KeyError as e:
                         print(f"KeyError: {e}. Skipping alias {alias} in dataset {dataset}.")
                         continue
@@ -421,15 +425,47 @@ class ESMValProcessor:
         return combined_driver_ds
 
     def _plot_timeseries(self):
-        from storypy.evaluate.plot import plot_precipitation_change
-        years = np.arange(1950, 2100)
+        from storypy.evaluate.plot import plot_anomaly_series
+        import pandas as pd
+        years = np.arange(1950, 2101)
         for var in self.var_names:
-            fig = plot_precipitation_change(
-                self.time_series_changes[var], region_extents=self.region_extents,
-                years=years, var_name=var
+
+            # Group time series by model and compute model means
+            member_ts   = self.time_series_changes[var]   # all members
+            model_map   = getattr(self, 'member_model_map', {}).get(var, [])
+
+            if model_map:
+                # Per-model mean (average across members of same model)
+                df_map    = pd.Series(model_map)
+                model_ts  = []
+                for model_name in df_map.unique():
+                    idx      = df_map[df_map == model_name].index.tolist()
+                    members  = [member_ts[i] for i in idx]
+                    if len(members) == 1:
+                        model_ts.append(members[0])
+                    else:
+                        model_ts.append(
+                            xr.concat(members, dim='member').mean('member')
+                        )
+            else:
+                model_ts = member_ts   # fallback: treat each entry as a model
+
+            fig = plot_anomaly_series(
+                target_change   = model_ts,      # per-model means (dark grey lines)
+                member_series   = member_ts,     # all members (thin grey lines)
+                region_extents  = self.region_extents,
+                years           = years,
+                var_name        = var,
+                baseline_period = (1960, 1990),
+                eoc_period      = (2070, 2100),
+                rolling_window  = 30,
+                region_labels   = self.main_config.get('region_labels', None),
             )
             if fig:
-                fig.savefig(os.path.join(self.main_config['plot_dir'], f"time_series_plot_{var}.png"))
+                fig.savefig(os.path.join(
+                    self.main_config['plot_dir'],
+                    f"time_series_plot_{var}.png"
+                ))
 
     def process_var(self):
         """
@@ -451,6 +487,8 @@ class ESMValProcessor:
         """
         self._process_data()
         combined = self._combine_and_save()
+        # plot time series
+        self._plot_timeseries()
         # self._plot_spatial(combined)
         return
 

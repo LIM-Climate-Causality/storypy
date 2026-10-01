@@ -197,7 +197,7 @@ class ModelDataPreprocessor:
 
         if model_sets:
             common_model_members = set.intersection(*model_sets.values())
-            print("Common model+members across all variables:", common_model_members)
+            # print("Common model+members across all variables:", common_model_members)
             # Extract only model names (without member) for output
             common_models = sorted({mm.split('_')[0] for mm in common_model_members})
             return common_models
@@ -318,6 +318,43 @@ class ModelDataPreprocessor:
                 self.ensemble_changes[var].append(norm.to_dataset(name=var))
                 self.time_series_changes[var].append(norm_ts.to_dataset(name=var))
 
+                if not hasattr(self, 'time_series_members'):
+                    self.time_series_members = {v: [] for v in self.var_names}
+
+                n_hist = hist.sizes['ensemble']
+                n_scen = scen.sizes['ensemble']
+                n_mem  = min(n_hist, n_scen)
+
+                for mem_idx in range(n_mem):
+                    try:
+                        combined_mem = xr.concat(
+                            [hist.isel(ensemble=mem_idx),
+                             scen.isel(ensemble=mem_idx)],
+                            dim='time'
+                        )
+                        tv_mem = seasonal_data_months(
+                            combined_mem[var], list(self.season)
+                        )
+                        if var == 'pr':
+                            tv_mem = tv_mem * 86400
+
+                        ts_mem = clim_change(
+                            tv_mem,
+                            period1=self.period1,
+                            period2=self.period2,
+                            season=self.season,
+                            preserve_time_series=True
+                        )
+                        # normalise by the same model-level GW scalar
+                        norm_ts_mem = (ts_mem / gv).expand_dims(
+                            {'model': [f"{m}_mem{mem_idx}"]}
+                        )
+                        self.time_series_members[var].append(
+                            norm_ts_mem.to_dataset(name=var)
+                        )
+                    except Exception as e:
+                        print(f"  Member {mem_idx} of {m} skipped: {e}")
+
             except KeyError as e:
                 print(f"KeyError: {e}. Skipping variable {var}.")
             
@@ -364,8 +401,25 @@ class ModelDataPreprocessor:
 
             hist = xr.concat(ens_hist, dim='ensemble')
             scen = xr.concat(ens_scen, dim='ensemble')
-
-            combined = xr.concat([hist.mean('ensemble'), scen.mean('ensemble')], dim='time')
+ 
+            # Align ensemble dimension — use only members present in both
+            # hist and scen (some models have different member counts)
+            n_hist = hist.sizes['ensemble']
+            n_scen = scen.sizes['ensemble']
+            n_common = min(n_hist, n_scen)
+            if n_hist != n_scen:
+                print(f"  {model}: hist={n_hist} members, "
+                      f"scen={n_scen} members — using first {n_common}")
+                hist = hist.isel(ensemble=slice(0, n_common))
+                scen = scen.isel(ensemble=slice(0, n_common))
+ 
+            # Per-member time series for std computation
+            combined_per_member = xr.concat([hist, scen], dim='time')
+ 
+            # Ensemble mean for main pipeline (unchanged behaviour)
+            combined = xr.concat(
+                [hist.mean('ensemble'), scen.mean('ensemble')], dim='time'
+            )
 
             try:
                 # Extract DataArray before seasonal processing
@@ -402,6 +456,54 @@ class ModelDataPreprocessor:
                 if 'model' not in da.dims:
                     da = da.expand_dims({'model': [model]})
                 da.name = short_name
+
+                # Computing std for the driver variable across members
+                member_das = []
+                for mem_idx in range(combined_per_member.sizes['ensemble']):
+                    combined_mem = combined_per_member.isel(ensemble=mem_idx)
+                    try:
+                        if short_name == 'gw':
+                            seasonal_mem = seasonal_data_months(
+                                combined_mem[variable_name], list(driver_season)
+                            )
+                            lat_weights = np.cos(np.deg2rad(seasonal_mem['lat']))
+                            gw_mem = seasonal_mem.weighted(lat_weights).mean(('lat', 'lon'))
+                            da_mem = clim_change(
+                                gw_mem,
+                                period1=driver_period1,
+                                period2=driver_period2,
+                                season=driver_season,
+                                preserve_time_series=False
+                            )
+                        else:
+                            seasonal_mem = seasonal_data_months(
+                                combined_mem[variable_name], list(driver_season)
+                            )
+                            if variable_name == 'pr':
+                                seasonal_mem = seasonal_mem * 86400
+                            da_mem = clim_change(
+                                seasonal_mem,
+                                period1=driver_period1,
+                                period2=driver_period2,
+                                region_method=self.region_method,
+                                box=driver_box,
+                                region_id=self.region_id,
+                                season=driver_season,
+                                preserve_time_series=False
+                            )
+                        member_das.append(float(da_mem.mean()))
+                    except Exception:
+                        pass
+
+                std_val = float(np.std(member_das, ddof=0)) \
+                          if len(member_das) > 1 else 0.0
+                da_std = xr.full_like(da, std_val)
+                da_std.name = f"{short_name}_std"
+
+                if f"{short_name}_std" not in self.driver_data:
+                    self.driver_data[f"{short_name}_std"] = []
+                self.driver_data[f"{short_name}_std"].append(da_std)
+
                 if short_name not in self.driver_data:
                     self.driver_data[short_name] = []
                 self.driver_data[short_name].append(da)
@@ -494,33 +596,50 @@ class ModelDataPreprocessor:
             if self.driver_data[var]:
                 da_all = xr.concat(self.driver_data[var], dim='model', coords='minimal', compat='override')
                 ens_mean = da_all.mean(dim='model')
-                ds_out = xr.Dataset({
-                    f"{var}": da_all,
-                    f"{var}_mean": ens_mean
-                })
+                ds_out   = xr.Dataset({
+                f"{var}":      da_all,
+                f"{var}_mean": ens_mean,
+            })
+ 
+            # Add per-model std across ensemble members if available
+            std_key = f"{var}_std"
+            if self.driver_data.get(std_key):
+                da_std = xr.concat(
+                    self.driver_data[std_key], dim='model',
+                    coords='minimal', compat='override'
+                )
+                ds_out[std_key] = da_std
+
                 outpath = os.path.join(self.driver_work_dir, f'remote_driver_{var}.nc')
                 ds_out.to_netcdf(outpath)
                 print(f"Saved remote driver output for {var} to {outpath}")
     
     def _plot_timeseries(self):
-        from storypy.evaluate.plot import plot_precipitation_change
         """
-        Plot normalized time-series for each target variable.
+        Plot normalised time-series for each target variable.
 
-        Saves figures to ``plot_dir`` if a plot is produced by the
-        configured plotting function.
+        Saves figures to ``plot_dir`` if a plot is produced.
         """
+        from storypy.evaluate.plot import plot_anomaly_series
         yrs = np.arange(1950, 2100)
         for var in self.var_names:
-            fig = plot_precipitation_change(
-                self.time_series_changes[var],
-                region_extents=self.region_extents,
-                years=yrs,
-                var_name=var
+            fig = plot_anomaly_series(
+                target_change   = self.time_series_changes[var],
+                member_series   = getattr(self, 'time_series_members', {}).get(var, None),
+                region_extents  = self.region_extents,
+                years           = yrs,
+                var_name        = var,
+                baseline_period = (1960, 1990),
+                eoc_period      = (2070, 2100),
+                rolling_window  = 30,
+                region_labels   = self.uc.get('region_labels', None),
             )
             if fig:
                 os.makedirs(self.plot_dir, exist_ok=True)
-                fig.savefig(os.path.join(self.plot_dir, f"time_series_plot_{var}.png"))
+                fig.savefig(os.path.join(
+                    self.plot_dir,
+                    f"time_series_plot_{var}.png"
+                ))
 
     # # main change processing
     def process_var(self):
