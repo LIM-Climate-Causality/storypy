@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "storypy"
-version = "0.1.4"
+version = "0.1.6"
 description = "A Python package to compute climate storylines"
 authors = [
     { name = "Richard Alawode", email = "richard.alawode@uni-leipzig.de" }
