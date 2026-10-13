@@ -1,16 +1,20 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# All bare keys of [project] must stay above the [project.*] sub-tables.
 [project]
 name = "storypy-climate"
 version = "0.0.1"
 description = "A Python package to compute climate storylines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Richard Alawode", email = "richard.alawode@uni-leipzig.de" }
 ]
-license = { text = "MIT" }
-requires-python = ">=3.10"
+keywords = ["climate", "storylines", "CMIP6", "regional climate", "uncertainty"]
 dependencies = [
     # core data model + I/O
     "numpy",
@@ -29,13 +33,14 @@ dependencies = [
     # progress reporting
     "tqdm",
 ]
-
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 
 [project.optional-dependencies]
@@ -44,8 +49,10 @@ paper       = ["adjustText"]
 dev         = ["pytest", "pytest-cov"]
 
 [project.urls]
-GitHub = "https://github.com/LIM-Climate-Causality/storypy"
-Homepage = "https://storypy.readthedocs.io/en/latest/"
+Homepage      = "https://storypy.readthedocs.io/en/latest/"
+Documentation = "https://storypy.readthedocs.io/en/latest/"
+Source        = "https://github.com/LIM-Climate-Causality/storypy"
+Issues        = "https://github.com/LIM-Climate-Causality/storypy/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
