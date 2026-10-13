@@ -30,11 +30,6 @@ dependencies = [
     "tqdm",
 ]
 
-[project.optional-dependencies]
-performance = ["dask"]
-paper       = ["adjustText"]
-dev         = ["pytest", "pytest-cov"]
-
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -43,11 +38,18 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 
+[project.optional-dependencies]
+performance = ["dask"]
+paper       = ["adjustText"]
+dev         = ["pytest", "pytest-cov"]
+
 [project.urls]
-Homepage = "https://github.com/LIM-Climate-Causality/storypy"
+GitHub = "https://github.com/LIM-Climate-Causality/storypy"
+Homepage = "https://storypy.readthedocs.io/en/latest/"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["storypy*"]
 
 [tool.setuptools.package-data]
 storypy = [
