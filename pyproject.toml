@@ -3,8 +3,8 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "storypy"
-version = "0.1.6"
+name = "storypy-climate"
+version = "0.0.1"
 description = "A Python package to compute climate storylines"
 authors = [
     { name = "Richard Alawode", email = "richard.alawode@uni-leipzig.de" }

@@ -1,6 +1,7 @@
-name: Publish to TestPyPI
+name: Publish
 
-# Runs when you push a tag like v0.1.5, and on demand from the Actions tab.
+# Tag push publishes to TestPyPI automatically, then waits for approval
+# before publishing the SAME artifacts to PyPI.
 on:
   push:
     tags:
@@ -37,12 +38,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
-    # Must match the "Environment name" entered on TestPyPI.
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/storypy
+      url: https://test.pypi.org/p/storypy-climate
 
-    # Required for Trusted Publishing. Job-level, never workflow-level.
     permissions:
       id-token: write
 
@@ -52,8 +51,30 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-      - name: Publish distributions to TestPyPI
+      - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          skip-existing: t:rue
+          skip-existing: true
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: publish-testpypi          # only after TestPyPI succeeded
+    runs-on: ubuntu-latest
+
+    # Put a required reviewer on this environment: the run pauses here until it is approved
+    environment:
+      name: pypi
+      url: https://pypi.org/p/storypy-climate
+
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
