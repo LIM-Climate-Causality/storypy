@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 # All bare keys of [project] must stay above the [project.*] sub-tables.
 [project]
-name = "storypy-climate"
+name = "storypy"
 version = "0.0.1"
 description = "A Python package to compute climate storylines"
 readme = "README.md"

@@ -40,7 +40,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/storypy-climate
+      url: https://test.pypi.org/p/storypy
 
     permissions:
       id-token: write
@@ -65,7 +65,7 @@ jobs:
     # Put a required reviewer on this environment: the run pauses here until it is approved for PyPI
     environment:
       name: pypi
-      url: https://pypi.org/p/storypy-climate
+      url: https://pypi.org/p/storypy
 
     permissions:
       id-token: write
