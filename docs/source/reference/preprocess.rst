@@ -1,48 +1,67 @@
 .. _preprocess:
 
-.. |br| raw:: html
+storypy.preprocess
+==================
 
-   <br />
+Two pathways turn CMIP output into the inputs of the storyline analysis:
 
-.. |brr| raw:: html
+- **Option A**, :class:`~storypy.preprocess.ESMValProcessor`: ESMValTool downloads,
+  regrids and preprocesses the data; storypy reads the ESMValTool metadata.
+- **Option B**, :class:`~storypy.preprocess.ModelDataPreprocessor`: storypy reads
+  CMIP-style NetCDF files from a local directory.
 
-   <br /> <br />
+Both expose ``process_var()`` (writes ``target_<var>.nc``: the change of each model,
+normalised by its global warming) and ``process_driver()``, so later steps are the same.
+All configuration keys are listed in :ref:`configuration`.
 
-
-storypy.preprocess module
-=========================
-
-This module provides two preprocessing pathways for ingesting CMIP data into the storypy pipeline:
-
-- **Option A** - ESMValTool-based preprocessing via :class:`ESMValProcessor`
-- **Option B** - Local NetCDF-based preprocessing via :class:`ModelDataPreprocessor`
-
-Both classes expose the same interface (``process_var`` and ``process_driver``), so downstream pipeline steps are identical regardless of which option is used.
-
-.. note::
-
-   Option A requires a working ESMValTool installation and a ``config-user.yml`` pointing to your local CMIP6 data pool. Option B requires that CMIP-style NetCDF files are already available locally and follow the expected directory and naming conventions described in the :ref:`overview <overview>`.
+.. currentmodule:: storypy.preprocess
 
 ----
 
-ESMValTool preprocessing (Option A)
-------------------------------------
+Option A: ESMValTool
+--------------------
 
-.. currentmodule:: storypy.preprocess._esmval_processor
+Only :func:`parse_config` needs ESMValTool installed. The processor itself accepts any
+dict whose ``input_data`` follows ESMValTool's metadata layout.
 
 .. autofunction:: parse_config
 
 .. autoclass:: ESMValProcessor
-   :members: __init__, process_var, process_driver
-   :show-inheritance:
+   :members: process_var, process_driver
 
 ----
 
-Local NetCDF preprocessing (Option B)
---------------------------------------
+Option B: local NetCDF files
+----------------------------
 
-.. currentmodule:: storypy.preprocess._netcdf_processor
+Expected layout (split on ``_``: model, experiment and variant are the 3rd, 4th and 5th
+fields, as in standard CMIP file names)::
+
+    <data_dir>/<var>/<freq>/<grid>/<var>_<table>_<model>_<experiment>_<variant>_<grid>_<period>.nc
+
+For example ``data/pr/mon/g025/pr_Amon_ACCESS-CM2_ssp585_r1i1p1f1_gn_201501-210012.nc``.
+A model is used when it has historical and scenario runs of a common variant for every
+target variable, and matching ``tas`` files for the global-warming
+normalisation.
 
 .. autoclass:: ModelDataPreprocessor
-   :members:
-   :show-inheritance:
+   :members: process_var, process_driver
+
+----
+
+Diagnostics
+-----------
+
+Building blocks used by both processors.
+
+.. autofunction:: seasonal_data_months
+
+.. autofunction:: clim_change
+
+.. autofunction:: apply_region_mask
+
+.. autofunction:: adjust_longitudes
+
+.. autofunction:: extract_metadata
+
+.. autofunction:: test_mean_significance

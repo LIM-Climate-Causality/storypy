@@ -1,6 +1,5 @@
-# Requirements for readthedocs
-sphinx
-ipykernel
-nbsphinx
-sphinx_rtd_theme
-numpydoc
+# Documentation build requirements (Read the Docs and local builds).
+# storypy itself is installed by .readthedocs.yaml (pip install .).
+sphinx>=7
+sphinx-rtd-theme>=2
+myst-parser>=2

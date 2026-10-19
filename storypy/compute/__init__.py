@@ -17,13 +17,13 @@ from ._regres import (
     replace_nans_with_zero,
     figure
 )
-from ._leave_one_out import (
-    run_loo_sensitivity,
-    loo_summary_table,
-    load_loo_results,
-    loo_sensitivity_masks,
-)
-from ._jet_index import (
-    compute_jet_target,
-    eddy_driven_jet_index,
-)
+# from ._leave_one_out import (
+#     run_loo_sensitivity,
+#     loo_summary_table,
+#     load_loo_results,
+#     loo_sensitivity_masks,
+# )
+# from ._jet_index import (
+#     compute_jet_target,
+#     eddy_driven_jet_index,
+# )

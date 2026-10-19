@@ -82,7 +82,7 @@ def main_direct(user_config):
         # Extract model names assuming the filename structure splits by '_' and index 2 is the model name.
         # model_names = [f.split('_')[2] for f in listOfFiles if f.endswith('.nc')]
         models = sorted(common_models)
-        
+
         for m in models:  # Process only the first 5 models
             # Select files for this model that are either historical or scenario (exp_name)
             ensemble_list = [f for f in listOfFiles if m in f and ('historical' in f or f.find('_'+exp_name+'_') != -1)]
@@ -90,14 +90,14 @@ def main_direct(user_config):
             ens_members_scenario = []
             ens_members_hist_gw = []
             ens_members_scenario_gw = []
-            
+
             for entry in ensemble_list:
                 parts = entry.split('_')
                 # Construct the corresponding tas filename for the global warming variable
                 entry_tas = 'tas_' + '_'.join(parts[1:])
                 pattern_hist = var + "*_" + m + "_*historical*.nc"
                 pattern_scenario = var + "*_" + m + "_*" + exp_name + "*.nc"
-                
+
                 if fnmatch.fnmatch(entry, pattern_hist):
                     ds_hist = xr.open_dataset(os.path.join(data_dir, var, freq, grid, entry))
                     ens_members_hist.append(ds_hist)
@@ -108,7 +108,7 @@ def main_direct(user_config):
                     ens_members_scenario.append(ds_scenario)
                     ds_scenario_gw = xr.open_dataset(os.path.join(data_dir, 'tas', freq, grid, entry_tas))
                     ens_members_scenario_gw.append(ds_scenario_gw)
-            
+
             # If there are no historical or scenario ensemble members, skip this model.
             if not ens_members_hist or not ens_members_scenario:
                 continue
@@ -126,7 +126,7 @@ def main_direct(user_config):
                 # For gw, take the ensemble mean then average over lat and lon so that gw is a 1D time series.
                 target['gw'] = xr.concat([model_hist_gw.mean(dim='ensemble'), model_scenario_gw.mean(dim='ensemble')], dim='time')
                 target['gw'] = target['gw'].mean(dim='lat').mean(dim='lon')
-        
+
         # At this point, target[var] is a DataArray with a time dimension.
         # Apply seasonal subsetting using seasonal_data_months() function.
             try:
@@ -134,19 +134,19 @@ def main_direct(user_config):
                 target_var = seasonal_data_months(target[var], list(season))
                 if var == 'pr':
                     target_var = target_var * 86400  # Convert precipitation to mm/day
-                
+
                 # Compute the climatological change for the target variable.
                 target_var_change = clim_change(
                     target_var, period1=period1, period2=period2,
                     region_method=region_method, box=box, region_id=region_id, season=season, preserve_time_series=False
                 )
-                
+
                 # Compute the time series of changes (preserving the time dimension)
                 target_var_change_time_series = clim_change(
                     target_var, period1=period1, period2=period2,
                     region_method=region_method, box=box, region_id=region_id, season=season, preserve_time_series=True
                 )
-                
+
                 # Process global warming (gw) similarly.
                 seasonal_gw = seasonal_data_months(target['gw'], list(season))
                 has_spatial_dims_gw = ('lat' in seasonal_gw.dims) and ('lon' in seasonal_gw.dims)
@@ -162,17 +162,17 @@ def main_direct(user_config):
                     )
                 if not has_spatial_dims_gw:
                     target_gw_change = target_gw_change.expand_dims({'lat': target_var_change['lat'], 'lon': target_var_change['lon']})
-                
+
                 # Assume that the global warming variable in target_gw_change is stored in variable 'tas'
                 # gw_var = target_gw_change['tas']
-                
+
                 # # Append the computed changes, normalizing by the gw variable.
                 # ensemble_changes[var].append(target_var_change / gw_var)
                 # time_series_changes[var].append(target_var_change_time_series / gw_var)
 
                 # Assume that the global warming variable in target_gw_change is stored in variable 'tas'
                 gw_var = target_gw_change['tas']
-                
+
                 # Append the computed changes, normalizing by the gw variable.
                 norm_change = (target_var_change / gw_var).expand_dims({'model': [m]})
                 norm_change_ts = (target_var_change_time_series / gw_var).expand_dims({'model': [m]})
@@ -203,7 +203,7 @@ def main_direct(user_config):
     })
     for var in var_names:
         combined_changes_ar[var] = combined_changes_ar[var].assign_coords(model=np.unique(combined_changes_ar[var]['model']))
-    
+
     # combined_changes_ar.attrs["model_names"] = ','.join(sorted(common_models))
 
     output_file = os.path.join(work_dir, "combined_changes.nc")
@@ -231,19 +231,19 @@ def main_direct(user_config):
 def main_esmval(config, user_config):
     """
     Integrated main function for StoryPy that processes CMIP data using esmvaltool metadata.
-    This version processes any target variable(s) listed in user_config["var_name"] and computes 
+    This version processes any target variable(s) listed in user_config["var_name"] and computes
     climatological changes (both spatial and as a time series) normalized by a global warming variable.
-    
+
     The function preserves the original logic while adding flexibility for multiple variables.
     """
     xr.set_options(keep_attrs=True)
-    
+
     # Calculate the overall bounding box from region extents (assumed to be in the 0-360, -90-90 format)
     all_lat_min = min(region[0] for region in user_config['region_extents'])
     all_lat_max = max(region[1] for region in user_config['region_extents'])
     all_lon_min = min(region[2] for region in user_config['region_extents'])
     all_lon_max = max(region[3] for region in user_config['region_extents'])
-    
+
     # Expand the bounding box by 5 degrees on all sides
     user_config['box'] = {
         'lat_min': max(all_lat_min - 5, -90),
@@ -251,7 +251,7 @@ def main_esmval(config, user_config):
         'lon_min': all_lon_min - 5 if all_lon_min - 5 >= -180 else -180,
         'lon_max': all_lon_max + 5 if all_lon_max + 5 <= 180 else 180
     }
-    
+
     # Unpack configuration
     region_method = user_config["region_method"]
     box = user_config["box"]
@@ -260,18 +260,18 @@ def main_esmval(config, user_config):
     region_extents = user_config["region_extents"]
     var_names = user_config["var_name"]         # e.g., ['pr', 'psl']
     titles = user_config["titles"]
-    
+
     # Group metadata from esmvaltool input data
     meta_dataset = group_metadata(config["input_data"].values(), "dataset")
     meta = group_metadata(config["input_data"].values(), "alias")
-    
+
     os.makedirs(config["plot_dir"], exist_ok=True)
-    
+
     # Prepare dictionaries to store results for each variable
     ensemble_changes = {var: [] for var in var_names}
     time_series_changes = {var: [] for var in var_names}
     target = {}  # To store the concatenated target DataArrays for each variable and for 'gw'
-    
+
     # Loop over each dataset (grouped by esmvaltool metadata)
     for dataset, dataset_list in meta_dataset.items():
         meta_group = group_metadata(dataset_list, "alias")
@@ -290,7 +290,7 @@ def main_esmval(config, user_config):
                     target_data[var] = adjust_longitudes(target_data[var], lon_dim='lon')
                     if var == 'pr':
                         target_data[var] *= 86400  # Convert precipitation to mm/day
-                    
+
                     # Compute climatological change (spatial; time collapsed)
                     target_var_change = clim_change(
                         target_data[var], ['1950', '1979'], ['2070', '2099'],
@@ -303,7 +303,7 @@ def main_esmval(config, user_config):
                         region_method=region_method, box=box, region_id=region_id,
                         season=season, preserve_time_series=True
                     )
-                    
+
                     # Process the global warming variable similarly
                     seasonal_gw = seasonal_data_months(target_gw['gw'], [12, 1, 2])
                     seasonal_gw = adjust_longitudes(seasonal_gw, lon_dim='lon')
@@ -321,23 +321,23 @@ def main_esmval(config, user_config):
                         )
                     if not has_spatial_dims_gw:
                         target_gw_change = target_gw_change.expand_dims({'lat': target_var_change['lat'], 'lon': target_var_change['lon']})
-                    
+
                     # Assume that the global warming variable is stored under 'tas'
                     #gw_var = target_gw_change['tas']
-                    
+
                     # Append the normalized changes for the current ensemble grouping
                     ensemble_changes[var].append(target_var_change / target_gw_change)
                     time_series_changes[var].append(target_var_change_ts / target_gw_change)
                 except KeyError as e:
                     print(f"KeyError: {e}. Skipping {alias} for dataset {dataset}.")
                     continue
-    
+
     # Process and plot spatial ensemble mean for each variable
     for var in var_names:
         if ensemble_changes[var]:
             ensemble_changes_ar = xr.concat(ensemble_changes[var], dim='model')
             ensemble_mean = ensemble_changes_ar.mean(dim='model')
-    
+
             # Compute p-values (if applicable)
             if 'model' in ensemble_changes_ar.dims and ensemble_changes_ar.sizes['model'] > 1:
                 ensemble_maps_pval = xr.apply_ufunc(
@@ -348,16 +348,16 @@ def main_esmval(config, user_config):
             else:
                 print("Only one model available; cannot compute p-values.")
                 ensemble_maps_pval = None
-    
+
             # Load stippling models (from file)
             positives_model = xr.open_dataset(os.path.join(config["work_dir"], 'stippling', 'number_of_models_positive_trend_CMIP6.nc'))
             negatives_model = xr.open_dataset(os.path.join(config["work_dir"], 'stippling', 'number_of_models_negative_trend_CMIP6.nc'))
-    
+
             # Plot the spatial map for this variable
             fig_spatial = plot_function(ensemble_mean, ensemble_maps_pval, positives_model, negatives_model, region_extents)
             if fig_spatial:
                 fig_spatial.savefig(os.path.join(config["plot_dir"], f"beta_forced_{var}_plot.png"))
-    
+
     # Process and plot time series for each variable
     years = np.arange(1950, 2100)
     for var in var_names:
@@ -370,7 +370,7 @@ def main_esmval(config, user_config):
         if fig_time_series:
             os.makedirs(user_config["plot_dir"], exist_ok=True)
             fig_time_series.savefig(os.path.join(user_config["plot_dir"], f"time_series_plot_{var}.png"))
-            
+
 
 if __name__ == "__main__":
     user_config = dict(

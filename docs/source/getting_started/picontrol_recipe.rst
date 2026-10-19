@@ -7,20 +7,25 @@ The γ significance criterion requires piControl simulation data to estimate int
 
 .. note::
 
-   You only need to run this recipe once per variable and season configuration. The output files are saved to the same ``work_dir`` as the main pipeline and are reused automatically by ``plot_function`` via ``StipplingComputer``.
+   You only need to run this recipe once per variable and season configuration. The output files are saved to ``<work_dir>/stippling/`` of the main pipeline, where you load them for :func:`~storypy.evaluate.plot.plot_function`.
 
 ----
 
 How it works
 ------------
 
-At each grid point, the γ ratio is defined as:
+At each grid point, γ compares every model's forced response with that model's internal
+variability (Zappa et al. 2021, eq. A1):
 
 .. math::
 
-   \gamma = \frac{|\Delta P_{\text{forced}}|}{\sigma_{\text{piControl}}}
+   \gamma = \sqrt{\frac{1}{M}\sum_{m=1}^{M} \frac{\beta_m^2}{\sigma_m^2}}
 
-where :math:`\Delta P_{\text{forced}}` is the multi-model mean forced signal from ``target_pr.nc`` and :math:`\sigma_{\text{piControl}}` is the standard deviation of non-overlapping 30-year rolling means from the piControl simulation. A grid point is flagged (γ > 1) where the forced signal exceeds the amplitude of internal variability.
+where :math:`\beta_m` is the forced response of model :math:`m` (from ``target_pr.nc``) and
+:math:`\sigma_m^2` is the variance of non-overlapping 30-year means of its piControl run.
+A grid point is flagged (γ > 1) where the forced signal exceeds the amplitude of internal
+variability. With several piControl members per model, the ratio is averaged over members
+(``variant_selection='mean'``).
 
 ----
 
@@ -119,18 +124,18 @@ The diagnostic saves two NetCDF files to ``{target_work_dir}/stippling/``:
    * - File
      - Description
    * - ``gamma_forced_CMIP6.nc``
-     - Median γ ratio across models (signal / noise). Values > 1 indicate
-       the forced signal exceeds internal variability.
+     - γ field defined above. Values > 1 indicate the forced signal exceeds
+       internal variability.
    * - ``summatory_denom_CMIP6.nc``
-     - Sum of 1/σ² weights across models (denominator used in the weighted
-       median computation).
+     - Sum of :math:`1/\sigma_m^2` across models (weight used in the Mindlin et
+       al. 2023 formula).
 
 ----
 
 Using the outputs in the notebook
 ----------------------------------
 
-Once the recipe has completed, load the γ output and convert it to the pseudo p-value format expected by ``plot_function``:
+Once the recipe has completed, load the γ output and convert it to the pseudo p-value format expected by :func:`~storypy.evaluate.plot.plot_function`:
 
 .. code-block:: python
 
@@ -150,6 +155,9 @@ with ``sig_level=0.5``.
 Parameters
 ----------
 
+Arguments of :class:`~storypy.compute.StipplingComputer` and
+:meth:`~storypy.compute.StipplingComputer.gamma_significance`:
+
 .. list-table::
    :widths: 25 15 60
    :header-rows: 1
@@ -161,18 +169,20 @@ Parameters
      - ``'pr'``
      - Variable to analyse (must match the variable saved in ``target_pr.nc``)
    * - ``picontrol_config``
-     - ``config``
-     - ESMValTool config dict passed automatically by ``run_diagnostic``
+     - ``None`` (required for γ)
+     - ESMValTool config dict, passed by ``run_diagnostic`` in the script above
    * - ``variable_group``
-     - ``'pr'``
-     - Variable group name in the piControl ESMValTool recipe
+     - ``'pr_picontrol'``
+     - Variable group name in the piControl ESMValTool recipe (the example
+       script passes ``'pr'`` to match the recipe above)
    * - ``season_months``
-     - ``[11, 12, 1, 2, 3]``
-     - Months selected before computing rolling statistics (NDJFM shown here)
+     - ``None``
+     - Months selected before computing rolling statistics, e.g.
+       ``[11, 12, 1, 2, 3]`` for NDJFM. ``None`` uses the data as delivered
    * - ``variant_selection``
      - ``'mean'``
-     - How to handle multi-member piControl runs — averages γ across all
-       available variants
+     - How to combine multi-member piControl runs: ``'mean'`` averages over
+       all variants, ``'first'`` / ``'last'`` use one
    * - ``rolling_window``
      - ``30``
      - Window length in years for the rolling mean used to estimate internal

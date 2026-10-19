@@ -15,7 +15,7 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
     """
 
     target = adjust_longitudes(target, lon_dim='lon')
-    
+
     # Existing code to handle spatial dimensions
     spatial_dims = set(target.dims)
     lat_names = {'lat', 'latitude', 'Latitude', 'LAT'}

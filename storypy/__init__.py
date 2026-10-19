@@ -4,7 +4,13 @@ storypy
 A Python package to compute and visualize climate storylines.
 """
 
-__version__ = "0.1.4"
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
+
+try:
+    __version__ = _version("storypy")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 __author__ = "Richard Alawode, Julia Mindlin, Marlene Kretschmer"
 __credits__ = "LIM - Climate Causality"
 

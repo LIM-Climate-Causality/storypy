@@ -116,7 +116,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red1 = [mean_y + ts1*np.std(y)]
         story_y_red2 =[mean_y - ts1*np.std(y)]
         ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='storylines')
-        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10) 
+        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10)
     elif corr == 'pacific':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
         ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)
@@ -126,7 +126,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red1 = [mean_y + ts1*np.std(y)]
         story_y_red2 =[mean_y - ts1*np.std(y)]
         ax.plot(story_x2, story_y_red2, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
-        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')  
+        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
     elif corr == 'nada':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
     else:
@@ -134,7 +134,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red = [mean_y + 1.26*np.std(y),mean_y - 1.26*np.std(y)]
         story_y_blue =[mean_y - 1.26*np.std(y),mean_y + 1.26*np.std(y)]
         ax.plot(story_x, story_y_red, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
-        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')    
+        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), shadow=True, ncol=5)
     plt.subplots_adjust(bottom=0.05)
     plt.xlabel(x_label,fontsize=18)

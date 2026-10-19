@@ -177,16 +177,16 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
     """Create arrays with color and tick levels that can be used as arguments
     in the Matplotlib contourf() function and the colorbar() function,
     respectively and that ensure symmetric color levels and colorbar ticks.
-    
+
     Parameters
     ----------
     plot_range : numeric (int or float)
         Value range that should be covered by contour plot.
-    
+
     num_steps : int
         Number of color levels. One level will be added if number is odd. Will
         be converted to integer if number is float.
-        
+
     Returns
     -------
     (color_levels, tick_levels) : tuple
@@ -198,7 +198,7 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
 
     inc_color = (plot_range*2)/num_steps # calculate increment
     color_levels = np.arange(-plot_range-inc_color/2, plot_range+inc_color/2+plot_range/1000, inc_color)
-    
+
     inc_ticks = inc_color
     tick_levels = np.arange(-plot_range, plot_range+plot_range/1000, inc_ticks*2)
     return color_levels, tick_levels
@@ -310,8 +310,8 @@ def _circular_boundary():
     center, radius = [0.5, 0.5], 0.5
     verts = np.vstack([np.sin(theta), np.cos(theta)]).T
     return mpath.Path(verts * radius + center)
- 
- 
+
+
 def _broadcast(value, n):
     """None/str -> [value]*n ; list/tuple -> passed through (must be len n)."""
     if value is None:
@@ -321,8 +321,8 @@ def _broadcast(value, n):
     if len(value) != n:
         raise ValueError(f"Expected {n} entries, got {len(value)}: {value}")
     return list(value)
- 
- 
+
+
 def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                         colorbar_label='Colorbar Label',
                         white_pct=0.05,
@@ -386,31 +386,31 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
     if panel_height is None:
         panel_height = panel_width
     boundary = _circular_boundary() if circular_boundary else None
- 
+
     n_panels = 5
     single_season = isinstance(season_label, str)
     season_labels = [None] * n_panels if single_season else _broadcast(season_label, n_panels)
     corner_labels = _broadcast(panel_labels, n_panels)
     letters = list(panel_letters) if panel_letters is not None else [None] * n_panels
- 
+
     # --- Figure size computed FROM the panel geometry, in inches
     fig_w_in = 2 * margin + 2 * panel_width + col_gap
     fig_h_in = top_margin + 3 * panel_height + 2 * row_gap + bottom_margin
- 
+
     # --- Panel rects, in inches, then converted to figure fractions.
     #     x-fractions divide by fig_w_in, y-fractions by fig_h_in.
     left_x_in   = margin
     right_x_in  = fig_w_in - margin - panel_width
     center_x_in = fig_w_in / 2 - panel_width / 2
- 
+
     row_top_y_in = fig_h_in - top_margin - panel_height
     row_mid_y_in = row_top_y_in - row_gap - panel_height
     row_bot_y_in = row_mid_y_in - row_gap - panel_height   # == bottom_margin, by construction
- 
+
     def rect(x_in, y_in):
         return (x_in / fig_w_in, y_in / fig_h_in,
                 panel_width / fig_w_in, panel_height / fig_h_in)
- 
+
     # Order matches [corner1, corner2, corner3, corner4, mean] and the
     # default panel_letters ('a','b','d','e','c').
     rects = [
@@ -420,14 +420,14 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
         rect(right_x_in,  row_bot_y_in),   # e, bottom-right
         rect(center_x_in, row_mid_y_in),   # c, center
     ]
- 
+
     with plt.rc_context({'font.family': font_family, 'font.size': font_size}):
         fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=dpi)
- 
+
         if single_season:
             fig.text(margin / fig_w_in, 1 - (top_margin * 0.4) / fig_h_in,
                       season_label, ha='left', va='center', fontsize=font_size)
- 
+
         im = None
         for i, r in enumerate(rects):
             ax = fig.add_axes(r, projection=projection)
@@ -436,7 +436,7 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                 ax.set_boundary(boundary, transform=ax.transAxes)
             ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
             ax.add_feature(cfeature.BORDERS, linestyle='--', linewidth=0.5)
- 
+
             if show_gridlines or show_gridlabels:
                 gl = ax.gridlines(draw_labels=show_gridlabels,
                                    linewidth=0.5, color='gray', alpha=0.5,
@@ -452,7 +452,7 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                     gl.xlocator = mticker.MaxNLocator(n_lon_ticks)
                 if n_lat_ticks is not None:
                     gl.ylocator = mticker.MaxNLocator(n_lat_ticks)
- 
+
             if season_labels[i] is not None:
                 ax.text(0.0, 1.02, season_labels[i], transform=ax.transAxes,
                         ha='left', va='bottom', fontsize=font_size + 1)
@@ -461,7 +461,7 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                         ha='right', va='bottom', fontsize=font_size + 1)
             ax.text(0.5, 1.14, titles[i], transform=ax.transAxes,
                     ha='center', va='bottom', fontsize=font_size + 1)
- 
+
             if letters[i] is not None:
                 ax.text(0.035, 0.92, f"{letters[i]})", transform=ax.transAxes,
                         ha='left', va='top', fontsize=font_size + 1,
@@ -469,30 +469,30 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                         bbox=dict(boxstyle='square,pad=0.25', facecolor='white',
                                   edgecolor='black', linewidth=0.8),
                         zorder=10)
- 
+
             data        = map_data[i]
             color_levels = levels[i]
             plot_range   = max(abs(color_levels[0]), abs(color_levels[-1]))
             tick_levels  = color_levels[::2]
- 
+
             original_cmap = plt.get_cmap(colormaps[i])
             shifted_cmap  = original_cmap(np.linspace(0, 1, len(color_levels)))
- 
+
             if white_pct > 0.0:
                 slot_width   = (2 * plot_range) / len(color_levels)
                 white_half   = white_pct * plot_range
                 n_white_half = max(1, round(white_half / slot_width))
- 
+
                 mid_index    = len(color_levels) // 2
                 lo = max(0,                  mid_index - n_white_half)
                 hi = min(len(color_levels),  mid_index + n_white_half)
                 shifted_cmap[lo:hi] = [1, 1, 1, 1]
- 
+
             new_cmap = mcolors.ListedColormap(shifted_cmap)
             norm     = mcolors.TwoSlopeNorm(
                 vmin=-plot_range, vcenter=0, vmax=plot_range
             )
- 
+
             data_cyclic, lon_cyclic = add_cyclic_point(
                 data.values, coord=data.lon
             )
@@ -501,7 +501,7 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                 levels=color_levels, cmap=new_cmap, norm=norm,
                 extend='both', transform=ccrs.PlateCarree()
             )
- 
+
         if im:
             cbar_w_in = 2 * panel_width + col_gap
             cbar_h_in = 0.15
@@ -518,7 +518,7 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                 FuncFormatter(lambda x, _: f'{x:.1f}')
             )
             cbar.set_label(colorbar_label)
- 
+
         plt.show()
         return fig
 
@@ -693,7 +693,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         ax.plot(mean_x + ts2*np.std(x), mean_y - ts2*np.std(y),
                 'o', color='orange', alpha=0.6, markersize=10, label='A+M-')
         ax.plot(mean_x - ts2*np.std(x), mean_y + ts2*np.std(y),
-                'go', alpha=0.6, markersize=10, label='A-M+') 
+                'go', alpha=0.6, markersize=10, label='A-M+')
     elif corr == 'pacific':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
         ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)  # same direction
@@ -705,7 +705,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         ax.plot(mean_x + ts2*np.std(x), mean_y - ts2*np.std(y),
                 'o', color='orange', alpha=0.6, markersize=10, label='High x, Low y')
         ax.plot(mean_x - ts2*np.std(x), mean_y + ts2*np.std(y),
-                'go', alpha=0.6, markersize=10, label='Low x, High y')  
+                'go', alpha=0.6, markersize=10, label='Low x, High y')
     elif corr == 'nada':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
     else:
@@ -713,7 +713,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red = [mean_y + 1.26*np.std(y),mean_y - 1.26*np.std(y)]
         story_y_blue =[mean_y - 1.26*np.std(y),mean_y + 1.26*np.std(y)]
         ax.plot(story_x, story_y_red, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
-        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')    
+        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), shadow=True, ncol=5)
     plt.subplots_adjust(bottom=0.05)
     plt.xlabel(x_label,fontsize=18)

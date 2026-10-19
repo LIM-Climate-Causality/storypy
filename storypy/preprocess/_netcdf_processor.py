@@ -158,7 +158,7 @@ class ModelDataPreprocessor:
             'lon_min': lon_min - 5 if lon_min - 5 >= -180 else -180,
             'lon_max': lon_max + 5 if lon_max + 5 <= 180 else 180
         }
-    
+
     def _find_common_models(self):
         """
         Discover models/members available for **all** target variables.
@@ -203,7 +203,7 @@ class ModelDataPreprocessor:
             return common_models
 
         return []
-    
+
     def _process_var(self, var, common_models):
         """
         Process a single target variable for all common models.
@@ -314,7 +314,7 @@ class ModelDataPreprocessor:
                 self.member_ids_per_model[m] = sorted([
                     f"{m}_{v}" for v in hist_variants
                 ])
-                
+
                 self.ensemble_changes[var].append(norm.to_dataset(name=var))
                 self.time_series_changes[var].append(norm_ts.to_dataset(name=var))
 
@@ -357,7 +357,7 @@ class ModelDataPreprocessor:
 
             except KeyError as e:
                 print(f"KeyError: {e}. Skipping variable {var}.")
-            
+
     def _process_driver_var(self, variable_name, common_models):
         """
         Process a single **driver** variable for all common models.
@@ -401,7 +401,7 @@ class ModelDataPreprocessor:
 
             hist = xr.concat(ens_hist, dim='ensemble')
             scen = xr.concat(ens_scen, dim='ensemble')
- 
+
             # Align ensemble dimension — use only members present in both
             # hist and scen (some models have different member counts)
             n_hist = hist.sizes['ensemble']
@@ -412,10 +412,10 @@ class ModelDataPreprocessor:
                       f"scen={n_scen} members — using first {n_common}")
                 hist = hist.isel(ensemble=slice(0, n_common))
                 scen = scen.isel(ensemble=slice(0, n_common))
- 
+
             # Per-member time series for std computation
             combined_per_member = xr.concat([hist, scen], dim='time')
- 
+
             # Ensemble mean for main pipeline (unchanged behaviour)
             combined = xr.concat(
                 [hist.mean('ensemble'), scen.mean('ensemble')], dim='time'
@@ -517,7 +517,7 @@ class ModelDataPreprocessor:
                 if short_name not in self.driver_data:
                     self.driver_data[short_name] = []
                 self.driver_data[short_name].append(da)
-    
+
     def _combine_and_save(self):
         """
         Combine normalized changes across models and write a NetCDF file.
@@ -583,7 +583,7 @@ class ModelDataPreprocessor:
             print(f"Saved target for {var} to {out}")
         return combined
 
-    
+
     def _combine_and_save_drivers(self):
         """
         Combine driver variables across models and write per-driver NetCDF files.
@@ -593,14 +593,16 @@ class ModelDataPreprocessor:
         """
         os.makedirs(self.driver_work_dir, exist_ok=True)
         for var in self.driver_short_names:
-            if self.driver_data[var]:
-                da_all = xr.concat(self.driver_data[var], dim='model', coords='minimal', compat='override')
-                ens_mean = da_all.mean(dim='model')
-                ds_out   = xr.Dataset({
+            if not self.driver_data.get(var):
+                print(f"No driver data for {var}; nothing written.")
+                continue
+            da_all = xr.concat(self.driver_data[var], dim='model', coords='minimal', compat='override')
+            ens_mean = da_all.mean(dim='model')
+            ds_out   = xr.Dataset({
                 f"{var}":      da_all,
                 f"{var}_mean": ens_mean,
             })
- 
+
             # Add per-model std across ensemble members if available
             std_key = f"{var}_std"
             if self.driver_data.get(std_key):
@@ -610,10 +612,10 @@ class ModelDataPreprocessor:
                 )
                 ds_out[std_key] = da_std
 
-                outpath = os.path.join(self.driver_work_dir, f'remote_driver_{var}.nc')
-                ds_out.to_netcdf(outpath)
-                print(f"Saved remote driver output for {var} to {outpath}")
-    
+            outpath = os.path.join(self.driver_work_dir, f'remote_driver_{var}.nc')
+            ds_out.to_netcdf(outpath)
+            print(f"Saved remote driver output for {var} to {outpath}")
+
     def _plot_timeseries(self):
         """
         Plot normalised time-series for each target variable.

@@ -1,7 +1,7 @@
 .. _data:
 
-storypy.data module
-===================
+storypy.data
+============
 
 This module provides functions for loading sample datasets bundled with storypy, including pre-computed regression outputs, target climate change fields, spatial driver fields, and tabular driver indices.
 
@@ -116,7 +116,9 @@ Available studies and seasons:
 Driver fields
 -------------
 
-.. autofunction:: load_driver_field, list_drivers
+.. autofunction:: load_driver_field
+
+.. autofunction:: list_drivers
 
 ----
 
@@ -147,13 +149,13 @@ Example:
 .. code-block:: python
 
    from storypy.data import read_regression
- 
+
    # Load precipitation regression coefficients
    coefs = read_regression('pr')
- 
+
    # Load u850 R² field
    r2 = read_regression('ua', diagnostic='R2')
- 
+
    # Load p-values for precipitation
    pvals = read_regression('pr', diagnostic='regression_coefficients_pvalues')
 
@@ -170,4 +172,4 @@ Driver index CSV files
 
 .. note::
 
-   ``read_scaled_standardized_drivers()`` returns the driver indices used directly as regressors in :func:`storypy.compute._mlr.compute_regression`. The scaling divides each driver by the ensemble mean global warming :math:`\Delta T`, and standardization divides by the cross-model standard deviation so that regression coefficients are comparable across drivers.
+   ``read_scaled_standardized_drivers()`` returns the driver indices used directly as regressors in :func:`storypy.compute.compute_regression`. The scaling divides each model's driver response by that model's global warming :math:`\Delta T_m`, and standardization divides by the cross-model standard deviation so that regression coefficients are comparable across drivers.

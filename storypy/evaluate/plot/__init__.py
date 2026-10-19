@@ -15,15 +15,15 @@ from ._storylines import (
     storyline_evaluation,
     regression_coefficient
 )
-from ._plot_loo import (
-    plot_loo_dashboard,
-    plot_loo_sign_consistency,
-    plot_loo_deviation_bars,
-    loo_robustness_table,
-    plot_loo_scatter,
-    run_loo_gridpoint,
-    plot_loo_gridpoint
-)
+# from ._plot_loo import (
+#     plot_loo_dashboard,
+#     plot_loo_sign_consistency,
+#     plot_loo_deviation_bars,
+#     loo_robustness_table,
+#     plot_loo_scatter,
+#     run_loo_gridpoint,
+#     plot_loo_gridpoint
+# )
 
 __all__ = [
     "create_arc",

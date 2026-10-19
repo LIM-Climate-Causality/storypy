@@ -27,7 +27,7 @@ def model_change(config,var,model):
 def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, figsize=(15, 5)):
     """
     Creates a figure with three panels in a row.
-    
+
     Parameters:
     - data_list: List of 2D arrays or datasets to plot.
     - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
@@ -36,30 +36,30 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     - titles: Titles for each subplot.
     - figsize: Size of the overall figure (default is (15, 5)).
     """
-    
+
     # Create the figure and use a specific projection for Cartopy maps
     fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
                             subplot_kw={'projection': ccrs.PlateCarree()})
-    
+
     # Iterate through each map and plot it
     for i, ax in enumerate(axs):
         # Set the extent for each map using the provided extents
         ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
-        
+
         # Add coastlines and gridlines
         ax.coastlines()
         ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
-        
+
         # Plot the data (assuming `data_list` contains 2D arrays or DataArrays)
         im = ax.contourf(data_list[i].lon, data_list[i].lat, data_list[i].values,
                          levels=levels_list[i], cmap=cmaps_list[i], transform=ccrs.PlateCarree())
-        
+
         # Set the title for each subplot
         ax.set_title(titles[i], fontsize=12)
-    
+
     # Add a single colorbar at the bottom of the plots
     fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
-    
+
     # Show the figure
     plt.show()
 
@@ -83,49 +83,49 @@ def create_five_panel_figure(map_data, extents, levels, colormaps, titles, white
     # Create the figure and GridSpec layout
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
-    
+
     # Define subplot positions for the maps
     subplot_positions = [(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]  # Corners and center
-    
+
     # Keep track of the mappable objects for the colorbar
     mappable = None
-    
+
     for i, pos in enumerate(subplot_positions):
         # Add a GeoAxes at the specified position
         ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
         lon_min, lon_max, lat_min, lat_max = extents[i]
-        
+
         # Set map extent
         ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
-        
+
         # Add map features
         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
         ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='--')
         ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        
+
         # Extract the data
         data = map_data[i]
-        
+
         # Create a custom colormap
         base_cmap = plt.get_cmap(colormaps[i])
         colors = base_cmap(np.linspace(0, 1, 256))
-        
+
         # Mask values within the white range
         white_min, white_max = white_range
         white_mask = (levels[i] >= white_min) & (levels[i] <= white_max)
         for j in range(len(levels[i]) - 1):
             if white_mask[j]:
                 colors[j, :] = [1, 1, 1, 1]  # Set white color for the range
-        
+
         custom_cmap = ListedColormap(colors)
-        
+
         # Plot the data
         norm = BoundaryNorm(levels[i], ncolors=custom_cmap.N, clip=True)
         im = ax.contourf(data.lon, data.lat, data, levels=levels[i], cmap=custom_cmap, norm=norm, transform=ccrs.PlateCarree())
-        
+
         # Set the title for each subplot
         ax.set_title(titles[i], fontsize=10, pad=4)
-        
+
         # Keep the last plotted mappable object for the shared colorbar
         if i == 4:  # Use the central plot's mappable for the colorbar
             mappable = im

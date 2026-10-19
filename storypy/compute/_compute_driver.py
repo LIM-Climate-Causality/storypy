@@ -5,7 +5,7 @@ import os
 import glob
 
 from storypy.preprocess._diagnostics import seasonal_data_months
-from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
+from storypy._compat import group_metadata
 
 def stand_numpy(data):
     """
@@ -63,6 +63,7 @@ def compute_drivers(driver_config):
     ----------
     driver_config : dict
         Configuration for reading drivers. Keys:
+
         - ``work_dir`` (str): directory with driver NetCDFs.
         - ``var_name`` (list[str]): variable names present in NetCDF files.
         - ``short_name`` (list[str], optional): output names used for
@@ -95,6 +96,7 @@ def compute_drivers(driver_config):
     >>> list(raw.columns)
     ['SST', 'UAS']
     """
+
     work_dir = driver_config['work_dir']
     var_names = driver_config['var_name']
     short_names = driver_config.get('short_name', var_names)
@@ -169,11 +171,11 @@ def compute_drivers(driver_config):
         errors_raw    = {}
         errors_scaled = {}
         driver_dir    = os.path.dirname(drivers_path)   # dir containing drivers.nc
- 
+
         for sn in df_raw.columns:
             std_key   = f"{sn}_std"
             remote_nc = os.path.join(driver_dir, f"remote_driver_{sn}.nc")
- 
+
             if os.path.exists(remote_nc):
                 ds_drv = xr.open_dataset(remote_nc)
                 if std_key in ds_drv:
@@ -206,7 +208,7 @@ def compute_drivers(driver_config):
                 print(f"  remote_driver_{sn}.nc not found; using zeros for {sn}")
                 errors_raw[sn]    = [0.0] * len(df_raw)
                 errors_scaled[sn] = [0.0] * len(df_raw)
- 
+
         df_errors        = pd.DataFrame(errors_raw,    index=df_raw.index)
         df_errors_scaled = pd.DataFrame(errors_scaled, index=df_raw.index)
         df_errors.to_csv(       os.path.join(out_dir, "drivers_errors.csv"))
@@ -299,7 +301,7 @@ def compute_drivers(driver_config):
     # Find intersection of model sets for all variables
     model_sets = [set(driver.keys()) for driver in regressor_values.values()]
     common_models = sorted(set.intersection(*model_sets))
-    
+
     # Build a dataframe from the collected values
     # models = sorted(model_set)
     data_raw = {sn: [regressor_values[sn].get(m, np.nan) for m in common_models] for sn in short_names}
@@ -386,7 +388,9 @@ def compute_drivers(driver_config):
     return df_raw, df_scaled, df_standardized
 
 
-
+# Default variable groups treated as targets (not drivers) by driver_indices.
+# Override per run with config['exclude_vars'] (replace) or
+# config['extra_exclude_vars'] (add to this set).
 EXCLUDE_VARS = {"u850", "tas", "sst", "psl", "pr", "pr_djf", "pr_jja", "u850_djf", "u850_jja"}
 
 
@@ -562,10 +566,10 @@ def _build_drivers_dataset(rd_list, models):
 def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
     """
     Build and save per-model driver uncertainty (std across ensemble members).
- 
+
     For multi-member models the std across members is non-zero.
     For single-member models the std is 0.
- 
+
     Parameters
     ----------
     rd_list : list[dict]
@@ -585,16 +589,16 @@ def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
     if not std_keys:
         print("No per-member std values found; skipping error CSV.")
         return
- 
+
     errors_raw = {}
     for key in std_keys:
         driver_name = key[:-4]   # strip '_std'
         errors_raw[driver_name] = [d.get(key, 0.0) for d in rd_list]
- 
+
     df_errors = pd.DataFrame(errors_raw, index=models)
     df_errors.to_csv(os.path.join(out_dir, "drivers_errors.csv"))
     print(f"Saved driver uncertainty to {out_dir}/drivers_errors.csv")
- 
+
     if gw_vals is not None:
         gw = np.asarray(gw_vals, dtype=float)
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -607,10 +611,14 @@ def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
 
 def driver_indices(config):
     """
+    Compute raw, GW-scaled and standardized driver indices from ESMValTool
+    metadata and write them to ``<work_dir>/remote_drivers/``.
+
     Parameters
     ----------
     config : dict
         Must contain 'input_data' and 'work_dir'. Optional keys:
+
         - 'variant_selection' (str): 'last', 'first', or 'mean'.
           Default 'mean' matches Zappa & Shepherd 2017.
         - 'season_months' (list[int] or None): Months for seasonal
@@ -624,12 +632,19 @@ def driver_indices(config):
         - 'future_period' (tuple[str,str]): Future period to average.
           Only used when season_months is not None.
           Default ('2070','2099').
+        - 'exclude_vars' (list[str]): variable groups that are targets, not
+          drivers. Replaces the default EXCLUDE_VARS.
+        - 'extra_exclude_vars' (list[str]): added to the excluded groups.
     """
+
     meta = group_metadata(config["input_data"].values(), "dataset")
+    exclude_vars = set(config.get("exclude_vars", EXCLUDE_VARS))
+    exclude_vars |= set(config.get("extra_exclude_vars", []))
 
     rd_list, models = _collect_scalar_drivers(
         meta,
         config["work_dir"],
+        exclude_vars      = exclude_vars,
         variant_selection = config.get("variant_selection", "mean"),
         season_months     = config.get("season_months",     None),
         ref_period        = config.get("ref_period",        ("1960", "1990")),
@@ -688,5 +703,6 @@ def driver_indices(config):
     return df_raw, df_scaled, df_stand
 
 if __name__ == "__main__":
+    from esmvaltool.diag_scripts.shared import run_diagnostic
     with run_diagnostic() as config:
         driver_indices(config)
