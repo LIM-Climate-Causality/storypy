@@ -57,18 +57,18 @@ where :math:`(\cdot)'_m` denotes standardisation across models. The coefficients
 
 Significance testing
 ~~~~~~~~~~~~~~~~~~~~
- 
+
 storypy implements the two-criterion stippling approach of Zappa et al. (2021) and
 Mindlin et al. (2023) to assess the robustness of projected changes:
- 
+
 - **β criterion (model agreement)** - a gridpoint is flagged where ≥ 90% of CMIP6
   models agree on the sign of the projected change.
- 
+
 - **γ criterion (signal-to-noise)** - a gridpoint is flagged where the forced signal
   exceeds the amplitude of internal variability estimated from piControl simulations
   (γ > 1). The γ ratio is computed using non-overlapping 30-year rolling means of
   seasonal piControl data.
- 
+
 Together, these criteria identify regions of *robust* change (both criteria met),
 *large but non-robust* change (γ > 1 only), and *robust but small* change (β only).
 
@@ -95,7 +95,7 @@ We designed two options for processing CMIP data:
 2. Option B: Using a local CMIP database where storypy reads CMIP-style NetCDF files directly from a local directory. Provided that:
     - CMIP datasets already available locally (or accessible via a mounted filesystem).
     - It follows the naming and grid conventions as described below.
-      
+
 
    .. code-block:: text
 
@@ -112,17 +112,17 @@ We designed two options for processing CMIP data:
 Preprocessing CMIP data is a crucial step in the analysis of dynamical storylines, as it ensures that the data is in a consistent format and resolution for analysis. storypy provides two options for preprocessing CMIP data (as already described), either using ESMValTool or by reading from a local CMIP database. The choice between these options depends on the user's preferences and the availability of data. Given CMIP data, the full pipeline can be run as follows:
 
 .. code-block:: python
- 
+
    # Step 1 - Preprocess CMIP data
    from storypy.preprocess import ESMValProcessor, ModelDataPreprocessor
- 
+
    processor = ESMValProcessor(esmval_config, user_config, driver_config)   # Option A
    # OR
    processor = ModelDataPreprocessor(user_config, driver_config)             # Option B
-   
+
    processor.process_var()
    processor.process_driver()
- 
+
    # Step 2 - Compute driver indices (Option B; Option A: storypy.compute.driver_indices)
    from storypy.compute import compute_drivers
    df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
@@ -147,7 +147,7 @@ See :ref:`quickstart` for a version that runs on the bundled sample data and
 :ref:`configuration` for all options.
 
 .. note::
- 
+
    The γ criterion requires a separate ESMValTool recipe run using piControl data.
    See :ref:`picontrol_recipe` for details.
 

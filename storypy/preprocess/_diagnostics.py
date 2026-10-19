@@ -100,7 +100,7 @@ def apply_region_mask(data, region_id, lat_dim='lat', lon_dim='lon'):
         raise ValueError(
             f"Latitude or longitude dimension missing. Available coords: {list(data.coords)}"
         )
-    
+
     lon = data.coords[lon_dim]
     lat = data.coords[lat_dim]
 
@@ -112,7 +112,7 @@ def apply_region_mask(data, region_id, lat_dim='lat', lon_dim='lon'):
     # Apply regionmask
     mask_IPCC = regionmask.defined_regions.ar6.land.mask(lon_or_obj=lon, lat=lat)
     masked_data = data.where(mask_IPCC == region_id)
-    
+
     print(f"Region mask applied. Data min: {masked_data.min().values}, max: {masked_data.max().values}")
     return masked_data
 
@@ -147,7 +147,7 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
     """
 
     target = adjust_longitudes(target, lon_dim='lon')
-    
+
     # Existing code to handle spatial dimensions
     spatial_dims = set(target.dims)
     lat_names = {'lat', 'latitude', 'Latitude', 'LAT'}

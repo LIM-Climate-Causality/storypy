@@ -63,7 +63,7 @@ def compute_drivers(driver_config):
     ----------
     driver_config : dict
         Configuration for reading drivers. Keys:
-        
+
         - ``work_dir`` (str): directory with driver NetCDFs.
         - ``var_name`` (list[str]): variable names present in NetCDF files.
         - ``short_name`` (list[str], optional): output names used for
@@ -171,11 +171,11 @@ def compute_drivers(driver_config):
         errors_raw    = {}
         errors_scaled = {}
         driver_dir    = os.path.dirname(drivers_path)   # dir containing drivers.nc
- 
+
         for sn in df_raw.columns:
             std_key   = f"{sn}_std"
             remote_nc = os.path.join(driver_dir, f"remote_driver_{sn}.nc")
- 
+
             if os.path.exists(remote_nc):
                 ds_drv = xr.open_dataset(remote_nc)
                 if std_key in ds_drv:
@@ -208,7 +208,7 @@ def compute_drivers(driver_config):
                 print(f"  remote_driver_{sn}.nc not found; using zeros for {sn}")
                 errors_raw[sn]    = [0.0] * len(df_raw)
                 errors_scaled[sn] = [0.0] * len(df_raw)
- 
+
         df_errors        = pd.DataFrame(errors_raw,    index=df_raw.index)
         df_errors_scaled = pd.DataFrame(errors_scaled, index=df_raw.index)
         df_errors.to_csv(       os.path.join(out_dir, "drivers_errors.csv"))
@@ -301,7 +301,7 @@ def compute_drivers(driver_config):
     # Find intersection of model sets for all variables
     model_sets = [set(driver.keys()) for driver in regressor_values.values()]
     common_models = sorted(set.intersection(*model_sets))
-    
+
     # Build a dataframe from the collected values
     # models = sorted(model_set)
     data_raw = {sn: [regressor_values[sn].get(m, np.nan) for m in common_models] for sn in short_names}
@@ -566,10 +566,10 @@ def _build_drivers_dataset(rd_list, models):
 def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
     """
     Build and save per-model driver uncertainty (std across ensemble members).
- 
+
     For multi-member models the std across members is non-zero.
     For single-member models the std is 0.
- 
+
     Parameters
     ----------
     rd_list : list[dict]
@@ -589,16 +589,16 @@ def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
     if not std_keys:
         print("No per-member std values found; skipping error CSV.")
         return
- 
+
     errors_raw = {}
     for key in std_keys:
         driver_name = key[:-4]   # strip '_std'
         errors_raw[driver_name] = [d.get(key, 0.0) for d in rd_list]
- 
+
     df_errors = pd.DataFrame(errors_raw, index=models)
     df_errors.to_csv(os.path.join(out_dir, "drivers_errors.csv"))
     print(f"Saved driver uncertainty to {out_dir}/drivers_errors.csv")
- 
+
     if gw_vals is not None:
         gw = np.asarray(gw_vals, dtype=float)
         with np.errstate(divide="ignore", invalid="ignore"):

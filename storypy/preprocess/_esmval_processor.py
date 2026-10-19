@@ -72,7 +72,7 @@ def parse_config(file):
     """
     from esmvaltool.diag_scripts.shared import get_cfg
     from esmvaltool.diag_scripts.shared._base import _get_input_data_files
-    config = get_cfg(file)           
+    config = get_cfg(file)
     config['input_data'] = _get_input_data_files(config)
     return config
 
@@ -325,7 +325,7 @@ class ESMValProcessor:
 
                     except Exception as e:
                         print(f"Error processing driver '{var}' for alias '{alias}' in dataset '{dataset}': {e}")
-    
+
     # Adaptation for variant selection strategy
     def _combine_and_save(self):
         from collections import defaultdict
@@ -404,7 +404,7 @@ class ESMValProcessor:
             print(f"\nSaved {len(model_names)} models to {out_file} "
                 f"(variant_selection='{self.variant_selection}')")
         return combined_ds
-    
+
     def _combine_drivers_and_save(self):
         """
         Combine processed driver variables across models and save as NetCDF.
@@ -420,7 +420,7 @@ class ESMValProcessor:
 
         # Each entry already has its alias as the 'model' coordinate (expand_dims
         # in _process_drivers)
-        
+
         out_file = os.path.join(self.main_config['work_dir'], f'driver_{self.driver_vars[-1]}.nc')
         combined_driver_ds.to_netcdf(out_file)
         print(f"Saved all driver variable changes to {out_file}")

@@ -149,13 +149,13 @@ Example:
 .. code-block:: python
 
    from storypy.data import read_regression
- 
+
    # Load precipitation regression coefficients
    coefs = read_regression('pr')
- 
+
    # Load u850 R² field
    r2 = read_regression('ua', diagnostic='R2')
- 
+
    # Load p-values for precipitation
    pvals = read_regression('pr', diagnostic='regression_coefficients_pvalues')
 

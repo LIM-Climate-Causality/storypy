@@ -4,13 +4,13 @@ from shapely.geometry.polygon import Polygon
 def seasonal_data_months(data, months):
     """
     Selects specified months from an xarray object and averages the data for those months within each year.
-    
+
     Parameters:
     - data: xarray.DataArray or xarray.Dataset
         The input data to process. It should have a 'time' coordinate.
     - months: list of int
         The months to select for averaging (1 = January, 2 = February, ..., 12 = December).
-    
+
     Returns:
     - xarray.DataArray or xarray.Dataset
         The averaged data for the selected months within each year, accounting for months that span across years.
@@ -54,7 +54,7 @@ def apply_region_mask(data, region_id, lat_dim='lat', lon_dim='lon'):
         raise ValueError(
             f"Latitude or longitude dimension missing. Available coords: {list(data.coords)}"
         )
-    
+
     lon = data.coords[lon_dim]
     lat = data.coords[lat_dim]
 
@@ -66,7 +66,7 @@ def apply_region_mask(data, region_id, lat_dim='lat', lon_dim='lon'):
     # Apply regionmask
     mask_IPCC = regionmask.defined_regions.ar6.land.mask(lon_or_obj=lon, lat=lat)
     masked_data = data.where(mask_IPCC == region_id)
-    
+
     print(f"Region mask applied. Data min: {masked_data.min().values}, max: {masked_data.max().values}")
     return masked_data
 

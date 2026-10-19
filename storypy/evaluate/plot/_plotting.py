@@ -20,7 +20,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
     import matplotlib.lines as mlines
     import matplotlib as mpl
     import numpy as np
- 
+
     plt.rcParams.update({
         "font.size": 18,
         "axes.titlesize": 18,
@@ -29,7 +29,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         "ytick.labelsize": 18,
         "figure.titlesize": 20
     })
- 
+
     # Determine extent
     if map_extent is not None:
         extent = map_extent                          # user-specified
@@ -37,7 +37,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         extent = target_change.attrs['region_extent']
     else:
         extent = [-180, 180, -90, 90]
- 
+
     if central_longitude == 0:
         target_change = target_change.sel(
             lon=slice(extent[0], extent[1]),
@@ -53,7 +53,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             float(target_change['lon'].min()), float(target_change['lon'].max()),
             float(target_change['lat'].min()), float(target_change['lat'].max())
         ]
- 
+
     print(f"extent used: {extent}")
 
     if central_longitude != 0:
@@ -70,7 +70,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             },
             attrs=target_change.attrs,
         )
- 
+
     # Align p_values
     if p_values is not None:
         if central_longitude == 0:
@@ -82,7 +82,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             p_values = p_values.sel(
                 lat=slice(extent[2], extent[3])
             )
- 
+
     # Align beta masks
     if positives_model is not None and negatives_model is not None:
         if central_longitude == 0:
@@ -103,7 +103,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             negatives_model_da = negatives_model['pr'].sel(
                 lat=slice(extent[2], extent[3])
             )
- 
+
     # Plot
     if projection == 'robinson':
         proj = ccrs.Robinson(central_longitude=central_longitude)
@@ -114,11 +114,11 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
     else:
         raise ValueError(f"projection must be 'robinson' or 'platecarree', "
                         f"got '{projection}'")
- 
+
     fig, ax = plt.subplots(figsize=figsize,
                         subplot_kw={'projection': proj},
                         constrained_layout=True)
- 
+
     # Robinson shows full globe — no set_extent needed
     if projection == 'platecarree' and map_extent is not None:
         ax.set_extent(map_extent, crs=ccrs.PlateCarree(central_longitude=central_longitude))
@@ -128,7 +128,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
                    edgecolor='black', linewidth=0.7)
     ax.add_feature(cfeature.BORDERS.with_scale('50m'),
                    linestyle='--', edgecolor='gray')
- 
+
     target_change.plot.contourf(
         ax=ax,
         transform=ccrs.PlateCarree(),
@@ -142,24 +142,24 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             'pad': 0.02,
         }
     )
- 
+
     # Region boxes
     for ext in region_extents:
         arc = create_arc(ext[2], ext[3], ext[0], ext[1])
         ax.add_geometries([arc], crs=ccrs.PlateCarree(),
                           edgecolor='blue', facecolor='none', linewidth=2)
- 
+
     legend_handles = []
- 
+
     if positives_model is not None and negatives_model is not None \
             and p_values is not None:
- 
+
         # Beta mask — models agree on sign ------------------------------------------------------------------
         beta_mask  = (positives_model_da + negatives_model_da) == sig
- 
+
         # Gamma mask — signal large relative to noise
         gamma_mask = p_values < sig_level
- 
+
         # Align gamma to beta grid if needed
         if not (gamma_mask['lon'].equals(positives_model_da['lon']) and
                 gamma_mask['lat'].equals(positives_model_da['lat'])):
@@ -168,12 +168,12 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
 
         print("lon values first 5:", positives_model_da['lon'].values[:5])
         print("lon values last 5:", positives_model_da['lon'].values[-5:])
- 
+
         lon2d, lat2d = np.meshgrid(
             positives_model_da['lon'].values,
             positives_model_da['lat'].values
         )
- 
+
         # Large but non-robust: gamma only → open circles
         large_nonrobust = gamma_mask.values
         if large_nonrobust.any():
@@ -202,7 +202,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
                               linestyle='None', markersize=6,
                               label='Robust (β ≥ 90%)')
             )
- 
+
     elif positives_model is not None and negatives_model is not None:
         # Beta only — filled dots
         combined = (positives_model_da + negatives_model_da) == sig
@@ -220,7 +220,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
                           linestyle='None', markersize=6,
                           label='Robust response (β ≥ 90%)')
         )
- 
+
     elif p_values is not None and p_values.size > 0:
         # Gamma only — open circles
         gamma_mask = p_values < sig_level
@@ -239,11 +239,11 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
                           markerfacecolor='none',
                           label='Large signal (γ > 1)')
         )
- 
+
     if legend_handles:
         ax.legend(handles=legend_handles, loc='lower left',
                   fontsize=12, framealpha=0.8)
- 
+
     ax.set_title(
         "End of century changes in winter (NDJFM) precipitation "
         "in CMIP6 high-emission scenario"
@@ -251,7 +251,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
     gl = ax.gridlines(draw_labels=True, linewidth=0.5,
                       color='gray', alpha=0.7, linestyle='--')
     gl.top_labels = gl.right_labels = False
- 
+
     return fig
 
 # The following plot_precipitation_change function is deprecated and will be removed in future versions. Please use plot_anomaly_series instead as it is more refined for good visuals.
@@ -324,13 +324,13 @@ def plot_precipitation_change(target_change, region_extents, years, var_name):
 
     plt.tight_layout()
     return fig
- 
+
 # Okabe-Ito colourblind-safe palette (10 colours, cycling for many models)
 _OKABE_ITO = [
     '#0072B2', '#E69F00', '#009E73', '#D55E00', '#CC79A7',
     '#56B4E9', '#F0E442', '#000000', '#999999', '#E69F00',
 ]
- 
+
 # RC params for consistent figure styling
 _RC = {
     'font.family':       'sans-serif',
@@ -357,8 +357,8 @@ _RC = {
     'savefig.bbox':      'tight',
     'savefig.pad_inches': 0.05,
 }
- 
- 
+
+
 def plot_anomaly_series(
     target_change,
     region_extents,
@@ -379,7 +379,7 @@ def plot_anomaly_series(
     """
     Plot regional precipitation anomaly time series with box-and-whisker
     end-of-century panels.
- 
+
     Parameters
     ----------
     target_change : list of xr.DataArray
@@ -413,44 +413,44 @@ def plot_anomaly_series(
         Figure size in inches. Auto-scaled if ``None``.
     panel_labels : list of str, optional
         Bold panel labels e.g. ``['(a)', '(b)']``. Default: none.
- 
+
     Returns
     -------
     matplotlib.figure.Figure
     """
     mpl.rcParams.update(_RC)
- 
+
     years        = np.asarray(years)
     num_regions  = len(region_extents)
     region_labels = region_labels or [chr(ord('A') + i) for i in range(num_regions)]
     panel_labels  = panel_labels  or [None] * num_regions
- 
+
     # Width ratios: [ts_panel, box_panel, ts_panel, box_panel, ...]
     width_ratios = []
     for _ in range(num_regions):
         width_ratios += [1.0, box_width_ratio]
     ncols = num_regions * 2
- 
+
     if figsize is None:
         figsize = (5.5 * num_regions + 1.5 * num_regions * box_width_ratio, 3.8)
- 
+
     fig, axes = plt.subplots(
         1, ncols,
         figsize=figsize,
         gridspec_kw={'width_ratios': width_ratios, 'wspace': 0.05},
     )
     # axes layout: axes[0]=ts1, axes[1]=box1, axes[2]=ts2, axes[3]=box2, ...
- 
+
     colours = [_OKABE_ITO[i % len(_OKABE_ITO)] for i in range(len(target_change))]
- 
+
     for i, (region_extent, region_label) in enumerate(
         zip(region_extents, region_labels)
     ):
         ax_ts  = axes[i * 2]
         ax_box = axes[i * 2 + 1]
- 
+
         lat_min, lat_max, lon_min, lon_max = region_extent
- 
+
         def _to_da(obj, var):
             if isinstance(obj, xr.Dataset):
                 return obj[var] if var in obj \
@@ -458,14 +458,14 @@ def plot_anomaly_series(
             if isinstance(obj, xr.DataArray):
                 return obj
             return obj
- 
+
         target_change_da = [_to_da(m, var_name) for m in target_change]
- 
+
         # --- Extract per-model regional anomaly time series ---
         # model_series stores (time_values, rm_values) tuples
         model_series   = []
         eoc_values     = []
- 
+
         for model_da in target_change_da:
             region = model_da.sel(
                 lat=slice(lat_min, lat_max),
@@ -474,43 +474,43 @@ def plot_anomaly_series(
             # Spatial mean
             lat_w  = np.cos(np.deg2rad(region['lat']))
             region = region.weighted(lat_w).mean(('lat', 'lon')).squeeze()
- 
+
             # Baseline subtraction
             baseline = region.sel(
                 time=slice(*baseline_period)
             ).mean(dim='time')
             anomaly = region - baseline
- 
+
             # 30-yr rolling mean — store with actual time coordinate
             rm = (anomaly
                   .rolling(time=rolling_window, center=True, min_periods=1)
                   .mean())
             model_series.append((rm.time.values, rm.squeeze().values))
- 
+
             # # Baseline mean (should be ~0 by construction)
             # base_mean = float(
             #     anomaly.sel(time=slice(*baseline_period)).mean(dim='time')
             # )
             # base_values.append(base_mean)
- 
+
             # # Mid-century mean
             # mid_mean = float(
             #     anomaly.sel(time=slice(*mid_period)).mean(dim='time')
             # )
             # mid_values.append(mid_mean)
- 
+
             # End-of-century mean
             eoc_mean = float(
                 anomaly.sel(time=slice(*eoc_period)).mean(dim='time')
             )
             eoc_values.append(eoc_mean)
- 
+
         # --- Layer 1: model means (dark grey, drawn first) ---
         for t_vals, rm_vals in model_series:
             ax_ts.plot(t_vals, rm_vals,
                        color='#333333', linewidth=1.0,
                        alpha=0.85, zorder=3)
- 
+
         # --- Layer 2: individual member lines (light grey, on top of model lines) ---
         if member_series is not None:
             for mem_da in member_series:
@@ -530,7 +530,7 @@ def plot_anomaly_series(
                 ax_ts.plot(rm.time.values, rm.squeeze().values,
                            color='#DDDDDD', linewidth=0.3,
                            alpha=0.6, zorder=2)
- 
+
         # --- Layer 3: MEM (thick red, on top of everything) ---
         # Use common time axis from first model
         t_common  = model_series[0][0]
@@ -541,10 +541,10 @@ def plot_anomaly_series(
         mem_vals = np.nanmean(np.stack(mem_stack, axis=0), axis=0)
         ax_ts.plot(t_common, mem_vals, color='#D55E00', linewidth=2.5,
                    zorder=5, label='Multi-model Mean')
- 
+
         ax_ts.axhline(0, color='black', linewidth=0.6,
                       linestyle='--', zorder=4)
- 
+
         # Axis formatting
         ax_ts.set_title(region_label, pad=6)
         ax_ts.set_xlabel('Year', labelpad=4)
@@ -553,21 +553,21 @@ def plot_anomaly_series(
         ax_ts.set_xlim(float(model_series[0][0][0]), float(model_series[0][0][-1]))
         ax_ts.xaxis.set_major_locator(mticker.MultipleLocator(20))
         ax_ts.tick_params(axis='x', labelrotation=0)
- 
+
         leg = ax_ts.legend(loc='upper left', fontsize=7, frameon=True,
                            framealpha=0.9, edgecolor='#BBBBBB',
                            handlelength=1.2)
         leg.get_frame().set_linewidth(0.4)
- 
+
         if panel_labels[i]:
             ax_ts.text(-0.10, 1.05, panel_labels[i],
                        transform=ax_ts.transAxes,
                        fontsize=11, fontweight='bold',
                        va='top', ha='left')
- 
+
         # --- End-of-century box plot only ---
         eoc_arr = np.array(eoc_values)
- 
+
         ax_box.boxplot(
             eoc_arr,
             positions    = [1],
@@ -588,9 +588,9 @@ def plot_anomaly_series(
         # MEM dot only — no per-model scatter
         ax_box.scatter([1], [float(np.nanmean(eoc_arr))],
                     color='#08306B', s=25, zorder=6, linewidths=0)
- 
+
         ax_box.axhline(0, color='black', linewidth=0.6, linestyle='--', zorder=3)
- 
+
         eoc_label = f"{str(eoc_period[0])[2:]}–{str(eoc_period[1])[2:]}"
         ax_box.set_xticks([1])
         ax_box.set_xticklabels([eoc_label], fontsize=8)
@@ -603,6 +603,6 @@ def plot_anomaly_series(
         ax_box.set_yticklabels([])
         ax_box.spines['left'].set_visible(False)
         ax_box.grid(axis='y', linewidth=0.4, color='#DDDDDD')
- 
+
     # fig.tight_layout(pad=0.5)
     return fig

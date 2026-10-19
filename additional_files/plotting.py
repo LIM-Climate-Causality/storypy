@@ -191,16 +191,16 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
     """Create arrays with color and tick levels that can be used as arguments
     in the Matplotlib contourf() function and the colorbar() function,
     respectively and that ensure symmetric color levels and colorbar ticks.
-    
+
     Parameters
     ----------
     plot_range : numeric (int or float)
         Value range that should be covered by contour plot.
-    
+
     num_steps : int
         Number of color levels. One level will be added if number is odd. Will
         be converted to integer if number is float.
-        
+
     Returns
     -------
     (color_levels, tick_levels) : tuple
@@ -212,7 +212,7 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
 
     inc_color = (plot_range*2)/num_steps # calculate increment
     color_levels = np.arange(-plot_range-inc_color/2, plot_range+inc_color/2+plot_range/1000, inc_color)
-    
+
     inc_ticks = inc_color
     tick_levels = np.arange(-plot_range, plot_range+plot_range/1000, inc_ticks*2)
     return color_levels, tick_levels
@@ -221,7 +221,7 @@ def make_symmetric_colorbar(plot_range, num_steps=18):
 def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5), mask_range=(-0.02, 0.02)):
     """
     Creates a figure with three panels in a row.
-    
+
     Parameters:
     - data_list: List of 2D arrays or datasets to plot.
     - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
@@ -230,16 +230,16 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     - titles: Titles for each subplot.
     - figsize: Size of the overall figure (default is (15, 5)).
     """
-    
+
     # Create the figure and use a specific projection for Cartopy maps
     fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
                             subplot_kw={'projection': ccrs.PlateCarree()})
-    
+
     # Iterate through each map and plot it
     for i, ax in enumerate(axs):
         # Set the extent for each map using the provided extents
         ax.set_extent(extent_list[i], crs=ccrs.PlateCarree())
-        
+
         # Add coastlines and gridlines
         ax.coastlines()
         ax.gridlines(draw_labels=True, linewidth=0.5, color='gray', linestyle='--')
@@ -248,19 +248,19 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
 
         # Mask values close to zero
         masked_data = np.ma.masked_inside(data_cyclic, mask_range[0], mask_range[1])
-        
+
         # Plot the data (assuming `data_list` contains 2D arrays or DataArrays)
         norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=levels_list[i][0], vmax=levels_list[i][-1])
         im = ax.contourf(lon_cyclic, data_list[i].lat, masked_data,
                          levels=levels_list[i], cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
-        
+
         # Set the title for each subplot
         ax.set_title(titles[i], fontsize=12)
-    
+
     # Add a single colorbar at the bottom of the plots
     cbar = fig.colorbar(im, ax=axs, orientation='horizontal', fraction=0.05, pad=0.05)
     cbar.set_label(colorbar_label)
-    
+
     # Show the figure
     plt.show()
 
@@ -284,35 +284,35 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
 #     # Create the figure and GridSpec layout
 #     fig = plt.figure(figsize=(12, 7))
 #     gs = gridspec.GridSpec(3, 3, figure=fig, wspace=0.02, hspace=0.02)  # Reduced spacing
-    
+
 #     # Define subplot positions for the maps
 #     subplot_positions = [(0, 0), (0, 2), (2, 0), (2, 2), (1, 1)]  # Corners and center
-    
+
 #     # Keep track of the mappable objects for the colorbar
 #     mappable = None
-    
+
 #     for i, pos in enumerate(subplot_positions):
 #         # Add a GeoAxes at the specified position
 #         ax = fig.add_subplot(gs[pos[0], pos[1]], projection=ccrs.PlateCarree())
 #         lon_min, lon_max, lat_min, lat_max = extents[i]
-        
+
 #         # Set map extent
 #         ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
-        
+
 #         # Add map features
 #         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
 #         ax.add_feature(cfeature.BORDERS, linewidth=0.5, linestyle='--')
 #         ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        
+
 #         # Extract the data
 #         data = map_data[i]
-        
+
 #         ############################################################################################
 #         # Custom colormap for white space
 #         # cmapU850 = mpl.colors.ListedColormap(['#8b4513', '#e65c00', '#ff8c00', '#ffa500',
 #         #                        '#f5deb3', 'white', 'white', '#fff5ee',
 #         #                        '#eed2ee', '#d8bfd8', '#9a32cd', '#6a0dad'])
-        
+
 #         # cmapU850.set_over('maroon')
 #         # cmapU850.set_under('midnightblue')
 #         ############################################################################################
@@ -333,14 +333,14 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
 #         # Create a custom colormap
 #         base_cmap = plt.get_cmap(colormaps[i])
 #         colors = base_cmap(np.linspace(0, 1, 256))
-        
+
 #         # Mask values within the white range
 #         white_min, white_max = white_range
 #         white_mask = (levels[i] >= white_min) & (levels[i] <= white_max)
 #         for j in range(len(levels[i]) - 1):
 #             if white_mask[j]:
 #                 colors[j, :] = [1, 1, 1, 1]  # Set white color for the range
-        
+
 #         custom_cmap = ListedColormap(colors)
 
 #         data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
@@ -364,10 +364,10 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
 
 #         #norm = mcolors.CenteredNorm(vcenter=0, halfrange=0.05)
 #         im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=levels[i], cmap=modified_cmap, norm=norm, extend='both', transform=ccrs.PlateCarree())
-        
+
 #         # Set the title for each subplot
 #         ax.set_title(titles[i], fontsize=10, pad=4)
-        
+
 #         # Keep the last plotted mappable object for the shared colorbar
 #         if i == 4:  # Use the central plot's mappable for the colorbar
 #             mappable = im
@@ -384,7 +384,7 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
 def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, titles, colorbar_label='Colorbar Label', figsize=(15, 5)):
     """
     Creates a figure with three panels in a row.
-    
+
     Parameters:
     - data_list: List of 2D arrays or datasets to plot.
     - extent_list: List of extents for each map [lon_min, lon_max, lat_min, lat_max].
@@ -393,7 +393,7 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
     - titles: Titles for each subplot.
     - figsize: Size of the overall figure (default is (15, 5)).
     """
-    
+
     fig, axs = plt.subplots(1, 3, figsize=figsize, dpi=300, constrained_layout=True,
                             subplot_kw={'projection': ccrs.PlateCarree()})
 
@@ -405,19 +405,19 @@ def create_three_panel_figure(data_list, extent_list, levels_list, cmaps_list, t
         data = data_list[i]
         plot_range = max(abs(data.min()), abs(data.max()))
         color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
-        
+
         norm = mcolors.TwoSlopeNorm(vcenter=0, vmin=-plot_range, vmax=plot_range)
         data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
-        
+
         im = ax.contourf(lon_cyclic, data.lat, data_cyclic,
                          levels=color_levels, cmap=cmaps_list[i], norm=norm, transform=ccrs.PlateCarree())
-        
+
         ax.set_title(titles[i], fontsize=12)
 
     cbar = fig.colorbar(im, ax=axs.ravel().tolist(), orientation='horizontal', fraction=0.05, pad=0.05, ticks=tick_levels)
     cbar.ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))
     cbar.set_label(colorbar_label)
-    
+
     plt.show()
 '''
 
@@ -439,23 +439,23 @@ def create_five_panel_figure(map_data, extents, levels, colormaps, titles, color
         ax.add_feature(cfeature.COASTLINE, linewidth=0.7)
         ax.add_feature(cfeature.BORDERS, linestyle='--', linewidth=0.5)
         ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', alpha=0.5, linestyle='--')
-        
+
         data = map_data[i]
         plot_range = max(abs(data.min()), abs(data.max()))
         color_levels, tick_levels = make_symmetric_colorbar(plot_range, num_steps=12)
-        
+
         original_cmap = plt.get_cmap(colormaps[i])
         shifted_cmap = original_cmap(np.linspace(0, 1, len(color_levels)))
         mid_index = len(color_levels) // 2
         shifted_cmap[mid_index - 1:mid_index + 1] = [1, 1, 1, 1]
         new_cmap = mcolors.ListedColormap(shifted_cmap)
-        
+
         norm = mcolors.TwoSlopeNorm(vmin=-plot_range, vcenter=0, vmax=plot_range)
         data_cyclic, lon_cyclic = add_cyclic_point(data.values, coord=data.lon)
         im = ax.contourf(lon_cyclic, data.lat, data_cyclic, levels=color_levels, cmap=new_cmap, norm=norm, transform=ccrs.PlateCarree())
-        
+
         ax.set_title(titles[i], fontsize=10, pad=4)
-        
+
     if im:
         cbar_ax = fig.add_axes([0.2, 0.08, 0.6, 0.02])
         cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=tick_levels)
@@ -608,7 +608,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red1 = [mean_y + ts1*np.std(y)]
         story_y_red2 =[mean_y - ts1*np.std(y)]
         ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='storylines')
-        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10) 
+        ax.plot(story_x2, story_y_red2, 'ro',alpha = 0.6,markersize=10)
     elif corr == 'pacific':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
         ts1 = np.sqrt(((1-r**2)/(2*(1-r)))*chi)
@@ -618,7 +618,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red1 = [mean_y + ts1*np.std(y)]
         story_y_red2 =[mean_y - ts1*np.std(y)]
         ax.plot(story_x2, story_y_red2, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
-        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')  
+        ax.plot(story_x1, story_y_red1, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
     elif corr == 'nada':
         r = np.corrcoef(x,y)[0,1]; chi = (1.26**2)*2
     else:
@@ -626,7 +626,7 @@ def plot_ellipse(models,x,y,corr='no',x_label='Eastern Pacific Warming [K K$^{-1
         story_y_red = [mean_y + 1.26*np.std(y),mean_y - 1.26*np.std(y)]
         story_y_blue =[mean_y - 1.26*np.std(y),mean_y + 1.26*np.std(y)]
         ax.plot(story_x, story_y_red, 'ro',alpha = 0.6,markersize=10,label='High asym Pacific Warming')
-        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')    
+        ax.plot(story_x, story_y_blue, 'bo',alpha = 0.6,markersize=10,label='Low asym Pacific Warming')
     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), shadow=True, ncol=5)
     plt.subplots_adjust(bottom=0.05)
     plt.xlabel(x_label,fontsize=18)

@@ -19,7 +19,7 @@ We designed two options for processing CMIP data:
 2. Option B: Using a local CMIP database where StoryPy reads CMIP-style NetCDF files directly from a local directory. Provided that:
     - CMIP datasets already available locally (or accessible via a mounted filesystem).
     - It follows the naming and grid conventions as described below.
-      
+
     ``` <data_dir>/
         ├── <var_name>/
         │   ├── <mon>/
@@ -111,11 +111,11 @@ Running the analysis to generate climate variables $C_{xm}$ and remote drivers $
     >>> processor_target = ModelDataPreprocessor(user_config, driver_config)
     >>> processor_target.process_var()
     >>> processor_target.process_driver()
-    
+
 Users can compute the driver indices and regression coefficients for a desired study region, for example:
-    
+
 For the driver indices
-    
+
     >>> from storypy.compute import compute_drivers
     >>> df_raw, df_scaled, df_standardized = compute_drivers(driver_config)
 
@@ -123,6 +123,3 @@ For the regression coefficients
 
     >>> from storypy.compute import run_regression
     >>> outputs = run_regression(user_config)
-
-
-

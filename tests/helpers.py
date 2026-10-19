@@ -7,14 +7,14 @@ import pandas.testing as pdt
 def compare_driver_csvs(dir1, dir2, filename="drivers.csv", atol=0.01, rtol=0.01):
     """
     Compare drivers.csv files from two directories using only common models and drivers.
-    
+
     Parameters:
         dir1 (str): Path to logic_1 output directory
         dir2 (str): Path to logic_2 output directory
         filename (str): CSV file name to compare (default: "drivers.csv")
         atol (float): Absolute tolerance
         rtol (float): Relative tolerance
-    
+
     Returns:
         bool: True if values match within tolerance, False otherwise
     """

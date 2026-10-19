@@ -18,7 +18,7 @@ import xarray as xr
 import numpy as np
 import statsmodels.api as sm
 import pandas as pd
-import json 
+import json
 import os
 from sklearn import linear_model
 import glob
@@ -62,7 +62,7 @@ class SpatialRegression(object):
     """
     def __init__(self):
         self.what_is_this = 'This performs a regression across models and plots everything'
-    
+
     def regression_data(self,variable,regressors,regressor_names):
         """
         Configure target and regressor matrices for the regression.
@@ -96,18 +96,18 @@ class SpatialRegression(object):
     def linear_regression(self,x):
         """
         Fit an OLS regression for a single gridpoint.
- 
+
         NaN values in x (e.g. models that mask 850 hPa below ground over
         Greenland) are dropped per-gridpoint before fitting. Each gridpoint
         is fitted on only the models with valid data, which is statistically
         correct and avoids imputation bias. If fewer than rd_num + 1 valid
         models remain, NaN coefficients are returned.
- 
+
         Parameters
         ----------
         x : array-like
             Target values over models for one gridpoint.
- 
+
         Returns
         -------
         tuple
@@ -126,12 +126,12 @@ class SpatialRegression(object):
         """
         Compute p-values for each regressor at a single gridpoint.
         NaN models are dropped before fitting (same as linear_regression).
- 
+
         Parameters
         ----------
         x : array-like
             Target values over models.
- 
+
         Returns
         -------
         tuple
@@ -145,17 +145,17 @@ class SpatialRegression(object):
         res = sm.OLS(x[valid], y[valid]).fit()
         returns = [res.pvalues[i] for i in range(self.rd_num)]
         return tuple(returns)
-    
+
     def linear_regression_R2(self,x):
         """
         Compute the coefficient of determination (R2) for a gridpoint.
         NaN models are dropped before fitting (same as linear_regression).
- 
+
         Parameters
         ----------
         x : array-like
             Target values over models.
- 
+
         Returns
         -------
         float
@@ -167,7 +167,7 @@ class SpatialRegression(object):
             return np.nan
         res = sm.OLS(x[valid], y[valid]).fit()
         return res.rsquared
-    
+
     def linear_regression_relative_importance(self,x):
         """
         Compute relative importance of regressors (LMG-like metric).
@@ -198,7 +198,7 @@ class SpatialRegression(object):
         return values[0] if len(values) == 1 else tuple(values)
 
 
-    def perform_regression(self,path,var): 
+    def perform_regression(self,path,var):
         """
         Perform spatial regression over all gridpoints and save diagnostics.
 
@@ -237,12 +237,12 @@ class SpatialRegression(object):
                                  output_core_dims=[[]],
                                  vectorize=True,
                                  dask="parallelized")
-        
+
         relative_importance = xr.apply_ufunc(self.linear_regression_relative_importance,self.target,input_core_dims=[["model"]],
                                  output_core_dims=[[] for i in range(self.rd_num-1)],
                                  vectorize=True,
                                  dask="parallelized")
-      
+
         if isinstance(relative_importance, xr.DataArray):  # single driver
             relative_importance = (relative_importance,)
 
@@ -251,17 +251,17 @@ class SpatialRegression(object):
                 regression_coefs = results[0].rename(self.regressor_names[0]).to_dataset()
             else:
                 regression_coefs[self.regressor_names[i]] = results[i]
-                
+
         print('This is regressor_coefs:',regression_coefs)
         regression_coefs.to_netcdf(path+'/'+var+'/regression_coefficients.nc')
-        
+
         for i in range(self.rd_num):
             if i == 0:
                 regression_coefs_pvalues = results_pvalues[0].rename(self.regressor_names[0]).to_dataset()
             else:
-                regression_coefs_pvalues[self.regressor_names[i]] = results_pvalues[i]        
+                regression_coefs_pvalues[self.regressor_names[i]] = results_pvalues[i]
         regression_coefs_pvalues.to_netcdf(path+'/'+var+'/regression_coefficients_pvalues.nc')
-        
+
         for i in range(len(relative_importance)):
             if i == 0:
                 relative_importance_values = relative_importance[0].rename(self.regressor_names[1]).to_dataset()
@@ -274,21 +274,21 @@ class SpatialRegression(object):
                                               'regression_coefficients_pvalues.nc',
                                               'regression_coefficients_relative_importance.nc',
                                               'R2.nc')]
-                     
-        
+
+
     def create_x(self,i,j,dato):
-        """ For each gridpoint creates an array and standardizes it 
+        """ For each gridpoint creates an array and standardizes it
         :param regressor_names: list with strings naming the independent variables
         :param path: saving path
         :return: none
-        """    
+        """
         x = np.array([])
         for y in range(len(dato.time)):
             aux = dato.isel(time=y)
             x = np.append(x,aux[i-1,j-1].values)
         return stand(x)
-     
-    
+
+
     def open_regression_coef(self,path,var):
         """
         Open saved regression coefficient and p-value maps.
@@ -305,14 +305,14 @@ class SpatialRegression(object):
         (list[xarray.DataArray], list[xarray.DataArray], xarray.Dataset)
             Tuple ``(maps, maps_pval, R2)`` with coefficient maps,
             p-value maps, and R² dataset.
-        """ 
+        """
         maps = []; maps_pval = []
         coef_maps = xr.open_dataset(path+'/'+var+'/regression_coefficients.nc')
         coef_pvalues = xr.open_dataset(path+'/'+var+'/regression_coefficients_pvalues.nc')
         maps = [coef_maps[variable] for variable in self.regressor_names]
         maps_pval = [coef_pvalues[variable] for variable in self.regressor_names]
         R2 = xr.open_dataset(path+'/'+var+'/R2.nc')
-        return maps, maps_pval, R2    
+        return maps, maps_pval, R2
 
     def open_lmg_coef(self,path,var):
         """
@@ -330,15 +330,15 @@ class SpatialRegression(object):
         (list[xarray.DataArray], list[xarray.DataArray], xarray.Dataset)
             Tuple ``(maps, maps_pval, R2)`` for LMG-style importance and
             the associated R² dataset.
-        """ 
+        """
         maps = []; maps_pval = []
         coef_maps = xr.open_dataset(path+'/'+var+'/regression_coefficients_relative_importance.nc')
         coef_pvalues = xr.open_dataset(path+'/'+var+'/regression_coefficients_pvalues.nc')
         maps = [coef_maps[variable] for variable in self.regressor_names[1:]]
         maps_pval = [coef_pvalues[variable] for variable in self.regressor_names]
         R2 = xr.open_dataset(path+'/'+var+'/R2.nc')
-        return maps, maps_pval, R2    
-    
+        return maps, maps_pval, R2
+
     # def plot_regression_lmg_map(self,path,var,output_path):
     #     """
     #     Plot relative-importance maps for each regressor.
@@ -387,20 +387,20 @@ class SpatialRegression(object):
     #             ax.set_boundary(circle, transform=ax.transAxes)
     #         elif var == 'sst':
     #             ax = plt.subplot(3,3,k+1,projection=projection_plate)
-    #         else: 
+    #         else:
     #             ax = plt.subplot(3,3,k+1,projection=projection_stereo)
     #         clevels = np.arange(0,40,2)
     #         im=ax.contourf(lon_c, lat, var_c*100,clevels,transform=data_crs,cmap='OrRd',extend='both')
     #         cnt=ax.contour(u_ERA.lon,u_ERA.lat, u_ERA.values,levels=[8],transform=data_crs,linewidths=1.2, colors='black', linestyles='-')
     #         plt.clabel(cnt,inline=True,fmt='%1.0f',fontsize=8)
-    #         if maps_pval[k+1].min() < 0.05: 
+    #         if maps_pval[k+1].min() < 0.05:
     #             levels = [maps_pval[k+1].min(),0.05,maps_pval[k+1].max()]
     #             ax.contourf(maps_pval[k+1].lon, lat, maps_pval[k+1].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
     #         elif maps_pval[k+1].min() < 0.10:
     #             levels = [maps_pval[k+1].min(),0.10,maps_pval[k+1].max()]
     #             ax.contourf(maps_pval[k+1].lon, lat, maps_pval[k+1].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
     #         else:
-    #             print('No significant values for ',self.regressor_names[k+1]) 
+    #             print('No significant values for ',self.regressor_names[k+1])
     #         plt.title(self.regressor_names[k+1],fontsize=18)
     #         ax.add_feature(cartopy.feature.COASTLINE,alpha=.5)
     #         ax.add_feature(cartopy.feature.BORDERS, linestyle='-', alpha=.5)
@@ -411,20 +411,20 @@ class SpatialRegression(object):
     #     if var == 'ua':
     #         colorbar_axes1 = fig_coef.add_axes([left+0.5, bottom, 0.01, height*2])
     #     elif var == 'sst':
-    #         colorbar_axes1 = fig_coef.add_axes([left+0.3, bottom, 0.01, height*2])    
+    #         colorbar_axes1 = fig_coef.add_axes([left+0.3, bottom, 0.01, height*2])
     #     else:
     #         colorbar_axes1 = fig_coef.add_axes([left+0.5, bottom, 0.01, height*2])
     #     cbar = fig_coef.colorbar(im, colorbar_axes1, orientation='vertical')
     #     cbar.set_label('relative importance',fontsize=14) #rotation = radianes
     #     cbar.ax.tick_params(axis='both',labelsize=14)
-            
+
     #     plt.subplots_adjust(bottom=0.2, right=.95, top=0.8)
     #     if var == 'ua':
     #         plt.savefig(output_path+'/regression_coefficients_relative_importance_u850',bbox_inches='tight')
     #     elif var == 'sst':
     #         plt.savefig(output_path+'/regression_coefficients_relative_importance_sst',bbox_inches='tight')
     #     else:
-    #         plt.savefig(output_path+'/regression_coefficients_relative_importance_XXX',bbox_inches='tight')   
+    #         plt.savefig(output_path+'/regression_coefficients_relative_importance_XXX',bbox_inches='tight')
     #     plt.clf
 
     #     return fig_coef
@@ -476,21 +476,21 @@ class SpatialRegression(object):
             #Plate Carree map for SST
             elif var == 'sst':
                 ax = plt.subplot(3,3,k+1,projection=projection_plate)
-            else: 
+            else:
                 ax = plt.subplot(3,3,k+1,projection=projection_stereo)
             if k == 0:
                 im0=ax.contourf(lon_c, lat, var_c,transform=data_crs,cmap='OrRd',extend='both')
             else:
                 clevels = np.arange(-.6,.7,0.1)
                 im=ax.contourf(lon_c, lat, var_c,clevels,transform=data_crs,cmap='RdBu_r',extend='both')
-            if maps_pval[k].min() < 0.05: 
+            if maps_pval[k].min() < 0.05:
                 levels = [0,0.05,1]
                 ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
             elif maps_pval[k].min() < 0.10:
                 levels = [0,0.10,1]
                 ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
             else:
-                print('No significant values for ',self.regressor_names[k]) 
+                print('No significant values for ',self.regressor_names[k])
             plt.title(self.regressor_names[k],fontsize=18)
             ax.add_feature(cartopy.feature.COASTLINE,alpha=.5)
             ax.add_feature(cartopy.feature.BORDERS, linestyle='-', alpha=.5)
@@ -499,9 +499,9 @@ class SpatialRegression(object):
                 ax.set_extent([-180, 180, -90, -25], ccrs.PlateCarree())
             elif var == 'sst':
                 ax.set_extent([-60, 220, -80, 40], ccrs.PlateCarree(central_longitude=180))
-            else: 
+            else:
                 ax.set_extent([-60, 220, -80, 40], ccrs.PlateCarree(central_longitude=180))
-            
+
         plt1_ax = plt.gca()
         left, bottom, width, height = plt1_ax.get_position().bounds
         if var == 'ua':
@@ -526,7 +526,7 @@ class SpatialRegression(object):
             cbar2.set_label('X/std(rd)',fontsize=14) #rotation = radianes
         cbar.ax.tick_params(axis='both',labelsize=14)
         cbar2.ax.tick_params(axis='both',labelsize=14)
-            
+
         plt.subplots_adjust(bottom=0.2, right=.95, top=0.8)
         if var == 'ua':
             plt.savefig(output_path+'/regression_coefficients_u850',bbox_inches='tight')
@@ -534,7 +534,7 @@ class SpatialRegression(object):
             plt.savefig(output_path+'/regression_coefficients_sst',bbox_inches='tight')
         else:
             plt.savefig(output_path+'/regression_coefficients_unknown_var',bbox_inches='tight')
-        
+
         plt.clf
 
         return fig_coef
@@ -569,7 +569,7 @@ def lmg(x, y):
             for subset in combinations(others, size):
                 out[j] += w * (r2[tuple(sorted(subset + (j,)))] - r2[subset])
     return out
-    
+
 def stand_detr(dato):
     anom = (dato - np.mean(dato))/np.std(dato)
     return signal.detrend(anom)
@@ -579,7 +579,7 @@ def filtro(dato):
     signal = dato - dato.rolling(time=10, center=True).mean()
     signal_out = signal.dropna('time', how='all')
     return signal_out
-                          
+
 def stand(dato):
     anom = (dato - np.mean(dato))/np.std(dato)
     return anom
@@ -603,4 +603,3 @@ def figure(target,predictors):
         plt.plot(y[:,i])
     plt.plot(stand_detr(target))
     return fig
-    
