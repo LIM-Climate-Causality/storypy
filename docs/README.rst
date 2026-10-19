@@ -1,17 +1,29 @@
+*********************
+storypy documentation
+*********************
 
-****************************
-ibicus documentation
-****************************
+Sources for https://storypy.readthedocs.io (Sphinx, Read the Docs theme).
 
-**Quick start**
+Build locally
+=============
 
-Follow these steps to prepare your documentation for readthedocs.
+From the repository root::
 
-#. Install requirements
+    pip install -e ".[docs]"
+    make -C docs html
+    open docs/build/html/index.html
 
-     pip3 install -r requirements.txt
+To fail on any warning, as the CI docs job does::
 
-#. From the `docs/source` directory execute the following:
+    sphinx-build -W --keep-going -b html docs/source docs/build/html
 
-     make html
-     open build/html/index.html  # To open with your default html application
+Layout
+======
+
+- ``source/index.rst``: landing page and table of contents.
+- ``source/getting_started/``: overview, installation, quickstart, configuration, piControl recipe.
+- ``source/reference/``: API reference, generated from the docstrings.
+- ``source/development/``: contributing guide and changelog (included from the repository's
+  ``CONTRIBUTING.md`` and ``CHANGELOG.md``).
+
+Read the Docs builds from ``.readthedocs.yaml`` at the repository root.

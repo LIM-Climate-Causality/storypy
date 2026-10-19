@@ -1,0 +1,24 @@
+# Checks that run on the files you commit. Set up once with:
+#   pip install pre-commit && pre-commit install
+# Run on everything with: pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.ipynb$
+      - id: end-of-file-fixer
+        exclude: \.ipynb$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]   # bundled sample .nc files are up to ~3 MB
+
+  # Only rules that catch real bugs, not style: syntax errors and undefined names.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: ["--select", "E9,F63,F7,F82", "--no-fix"]
+        files: ^(storypy|tests)/

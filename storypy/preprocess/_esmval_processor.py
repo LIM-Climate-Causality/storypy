@@ -43,8 +43,7 @@ import warnings
 from storypy.utils import np, xr
 
 from ._diagnostics import clim_change, seasonal_data_months
-from esmvaltool.diag_scripts.shared import get_cfg, group_metadata
-from esmvaltool.diag_scripts.shared._base import _get_input_data_files
+from storypy._compat import group_metadata
 
 def parse_config(file):
     """
@@ -71,6 +70,8 @@ def parse_config(file):
     >>> list(cfg.keys())
     ['input_data', 'run_dir', 'output_dir', ...]
     """
+    from esmvaltool.diag_scripts.shared import get_cfg
+    from esmvaltool.diag_scripts.shared._base import _get_input_data_files
     config = get_cfg(file)           
     config['input_data'] = _get_input_data_files(config)
     return config
@@ -177,6 +178,7 @@ class ESMValProcessor:
         self.time_series_changes = {var: [] for var in self.var_names}
         self.driver_data = {var: [] for var in self.driver_vars}
         self.all_model_names = []
+        self.change_aliases = {var: [] for var in self.var_names}
         # Prepare output dirs
         os.makedirs(self.config["plot_dir"], exist_ok=True)
 
@@ -266,6 +268,7 @@ class ESMValProcessor:
                         norm_ts = change_ts / gw_scalar
                         norm.attrs['member_id'] = alias
                         self.ensemble_changes[var].append(norm)
+                        self.change_aliases[var].append(alias)
                         self.time_series_changes[var].append(norm_ts)
                         # Store member-to-model mapping for plotting
                         if not hasattr(self, 'member_model_map'):
@@ -336,7 +339,7 @@ class ESMValProcessor:
                 continue
 
             groups = defaultdict(list)
-            for name, da in zip(self.all_model_names,
+            for name, da in zip(self.change_aliases[var],
                                 self.ensemble_changes[var]):
                 base = name.split('_r')[0]
                 groups[base].append((name, da))
@@ -393,12 +396,13 @@ class ESMValProcessor:
             )
 
         combined_ds = xr.Dataset(combined_vars)
-        out_file    = os.path.join(
-            self.main_config['work_dir'], f'target_{var}.nc'
-        )
-        combined_ds.to_netcdf(out_file)
-        print(f"\nSaved {len(model_names)} models to {out_file} "
-            f"(variant_selection='{self.variant_selection}')")
+        for var in combined_vars:
+            out_file    = os.path.join(
+                self.main_config['work_dir'], f'target_{var}.nc'
+            )
+            combined_ds[[var]].to_netcdf(out_file)
+            print(f"\nSaved {len(model_names)} models to {out_file} "
+                f"(variant_selection='{self.variant_selection}')")
         return combined_ds
     
     def _combine_drivers_and_save(self):
@@ -414,12 +418,10 @@ class ESMValProcessor:
             for var in self.driver_vars
         })
 
-        # Assign sorted model names
-        models = sorted(self.all_model_names)
-        for var in self.driver_vars:
-            combined_driver_ds[var] = combined_driver_ds[var].assign_coords(model=('model', models))
-
-        out_file = os.path.join(self.main_config['work_dir'], f'driver_{var}.nc')
+        # Each entry already has its alias as the 'model' coordinate (expand_dims
+        # in _process_drivers)
+        
+        out_file = os.path.join(self.main_config['work_dir'], f'driver_{self.driver_vars[-1]}.nc')
         combined_driver_ds.to_netcdf(out_file)
         print(f"Saved all driver variable changes to {out_file}")
         return combined_driver_ds

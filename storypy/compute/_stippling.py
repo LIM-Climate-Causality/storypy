@@ -197,7 +197,7 @@ class StipplingComputer:
             Maps base model name to a list of ``(alias, DataArray)``
             tuples, one per available variant.
         """
-        from esmvaltool.diag_scripts.shared import group_metadata
+        from storypy._compat import group_metadata
 
         if self.picontrol_config is None:
             raise ValueError(
@@ -245,11 +245,13 @@ class StipplingComputer:
  
         Saves two NetCDF files under ``{work_dir}/stippling/``:
  
-        - ``gamma_forced_CMIP6.nc`` : median signal-to-noise ratio across
-        models (f = signal / noise).
-        - ``summatory_denom_CMIP6.nc`` : sum of ``1 / noise^2`` across all
-        models, used as the denominator weight in the Mindlin et al. (2023)
-        significance formula.
+        - ``gamma_forced_CMIP6.nc`` : signal-to-noise ratio
+          gamma = sqrt(mean over models of beta_m^2 / sigma_m^2), where
+          beta_m is the forced response of model m and sigma_m^2 the variance
+          of its non-overlapping ``rolling_window``-year piControl means.
+        - ``summatory_denom_CMIP6.nc`` : sum of ``1 / sigma_m^2`` across all
+          models, used as the denominator weight in the Mindlin et al. (2023)
+          significance formula.
  
         Parameters
         ----------

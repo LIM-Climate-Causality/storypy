@@ -5,7 +5,7 @@ import os
 import glob
 
 from storypy.preprocess._diagnostics import seasonal_data_months
-from esmvaltool.diag_scripts.shared import group_metadata, run_diagnostic
+from storypy._compat import group_metadata
 
 def stand_numpy(data):
     """
@@ -63,6 +63,7 @@ def compute_drivers(driver_config):
     ----------
     driver_config : dict
         Configuration for reading drivers. Keys:
+        
         - ``work_dir`` (str): directory with driver NetCDFs.
         - ``var_name`` (list[str]): variable names present in NetCDF files.
         - ``short_name`` (list[str], optional): output names used for
@@ -95,6 +96,7 @@ def compute_drivers(driver_config):
     >>> list(raw.columns)
     ['SST', 'UAS']
     """
+
     work_dir = driver_config['work_dir']
     var_names = driver_config['var_name']
     short_names = driver_config.get('short_name', var_names)
@@ -386,7 +388,9 @@ def compute_drivers(driver_config):
     return df_raw, df_scaled, df_standardized
 
 
-
+# Default variable groups treated as targets (not drivers) by driver_indices.
+# Override per run with config['exclude_vars'] (replace) or
+# config['extra_exclude_vars'] (add to this set).
 EXCLUDE_VARS = {"u850", "tas", "sst", "psl", "pr", "pr_djf", "pr_jja", "u850_djf", "u850_jja"}
 
 
@@ -607,10 +611,14 @@ def _save_driver_errors(rd_list, models, out_dir, gw_vals=None):
 
 def driver_indices(config):
     """
+    Compute raw, GW-scaled and standardized driver indices from ESMValTool
+    metadata and write them to ``<work_dir>/remote_drivers/``.
+
     Parameters
     ----------
     config : dict
         Must contain 'input_data' and 'work_dir'. Optional keys:
+
         - 'variant_selection' (str): 'last', 'first', or 'mean'.
           Default 'mean' matches Zappa & Shepherd 2017.
         - 'season_months' (list[int] or None): Months for seasonal
@@ -624,12 +632,19 @@ def driver_indices(config):
         - 'future_period' (tuple[str,str]): Future period to average.
           Only used when season_months is not None.
           Default ('2070','2099').
+        - 'exclude_vars' (list[str]): variable groups that are targets, not
+          drivers. Replaces the default EXCLUDE_VARS.
+        - 'extra_exclude_vars' (list[str]): added to the excluded groups.
     """
+
     meta = group_metadata(config["input_data"].values(), "dataset")
+    exclude_vars = set(config.get("exclude_vars", EXCLUDE_VARS))
+    exclude_vars |= set(config.get("extra_exclude_vars", []))
 
     rd_list, models = _collect_scalar_drivers(
         meta,
         config["work_dir"],
+        exclude_vars      = exclude_vars,
         variant_selection = config.get("variant_selection", "mean"),
         season_months     = config.get("season_months",     None),
         ref_period        = config.get("ref_period",        ("1960", "1990")),
@@ -688,5 +703,6 @@ def driver_indices(config):
     return df_raw, df_scaled, df_stand
 
 if __name__ == "__main__":
+    from esmvaltool.diag_scripts.shared import run_diagnostic
     with run_diagnostic() as config:
         driver_indices(config)

@@ -1,113 +1,119 @@
 .. _compute:
 
-.. |br| raw:: html
+storypy.compute
+===============
 
-   <br />
+Remote driver indices, spatial multiple linear regression and significance (stippling)
+masks, following Zappa & Shepherd (2017), Zappa et al. (2021) and Mindlin et al. (2023).
 
-.. |brr| raw:: html
+.. currentmodule:: storypy.compute
 
-   <br /> <br />
+.. autosummary::
+   :nosignatures:
 
-
-storypy.compute module
-======================
-
-This module provides functions and classes for computing remote driver indices, running multiple linear regression, and performing stippling significance tests following Zappa et al. (2021) and Mindlin et al. (2023).
+   compute_drivers
+   driver_indices
+   compute_regression
+   SpatialRegression
+   StipplingComputer
 
 ----
 
-Driver preparation
+Driver indices
+--------------
+
+Two entry points produce the same three tables in ``<work_dir>/remote_drivers/``:
+``drivers.csv`` (raw), ``scaled_drivers.csv`` (divided by global warming) and
+``scaled_standardized_drivers.csv`` (z-scored across models, the regression input), plus
+the ensemble spread in ``drivers_errors.csv`` / ``scaled_drivers_errors.csv``.
+
+- :func:`compute_drivers` reads the NetCDF files written by
+  :class:`~storypy.preprocess.ModelDataPreprocessor` (Option B).
+- :func:`driver_indices` reads ESMValTool metadata (Option A). Variable groups listed in
+  ``EXCLUDE_VARS`` (the targets ``u850``, ``tas``, ``sst``, ``psl``, ``pr``, ``pr_djf``,
+  ``pr_jja``, ``u850_djf``, ``u850_jja``) are skipped; ``config['exclude_vars']`` replaces
+  that list and ``config['extra_exclude_vars']`` adds to it. See :ref:`configuration`.
+
+.. autofunction:: compute_drivers
+
+.. autofunction:: driver_indices
+
+.. autofunction:: stand_pandas
+
+.. autofunction:: stand_numpy
+
+----
+
+Spatial regression
 ------------------
 
-.. currentmodule:: storypy.compute._compute_driver
+:func:`compute_regression` aligns ``target_<var>.nc`` with the standardized driver table
+by model name and fits, at every gridpoint,
 
-.. automodule:: storypy.compute._compute_driver
-   :members: compute_drivers_from_netcdf, driver_indices, stand_numpy, stand_pandas
-   :show-inheritance:
+.. math::
 
-.. note::
+   P_{xm} = a_x + \sum_k b_{k,x}\, X'_{k,m} + e_{xm}
 
-   Additional internal helpers (e.g. ``_collect_scalar_drivers``) are used internally for file selection and dataset assembly and are not part of the public API.
+writing four files to ``<work_dir>/regression_output/<var>/``:
 
-----
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
 
-Multiple linear regression
---------------------------
+   * - File
+     - Content
+   * - ``regression_coefficients.nc``
+     - :math:`a_x` (named ``MEM``) and one :math:`b_{k,x}` per driver
+   * - ``regression_coefficients_pvalues.nc``
+     - two-sided t-test p-value of each coefficient
+   * - ``regression_coefficients_relative_importance.nc``
+     - LMG relative importance of each driver (shares of :math:`R^2`)
+   * - ``R2.nc``
+     - coefficient of determination
 
-.. currentmodule:: storypy.compute._mlr
+Models that are NaN at a gridpoint (e.g. 850 hPa below ground) are left out of the fit at
+that gridpoint only; with fewer valid models than coefficients + 1 the result is NaN.
 
 .. autofunction:: compute_regression
 
-----
-
-Regression core utilities
--------------------------
-
-.. currentmodule:: storypy.compute._regres
-
 .. autoclass:: SpatialRegression
-   :members: regression_data, linear_regression, linear_regression_pvalues,
-             linear_regression_R2, perform_regression,
-             open_regression_coef, open_lmg_coef,
-             plot_regression_coef_map, plot_regression_lmg_map
-   :show-inheritance:
+   :members: regression_data, perform_regression, linear_regression,
+             linear_regression_pvalues, linear_regression_R2,
+             linear_regression_relative_importance, open_regression_coef,
+             open_lmg_coef, plot_regression_coef_map
+
+.. autofunction:: storypy.compute._regres.lmg
 
 ----
-
-Stippling significance
-----------------------
 
 .. _gamma_significance:
 
-.. currentmodule:: storypy.compute._stippling
+Significance (stippling)
+------------------------
+
+:class:`StipplingComputer` implements the two robustness criteria of Zappa et al. (2021)
+and Mindlin et al. (2023):
+
+- **β criterion**, :meth:`~StipplingComputer.beta_significance`: at least 90 % of models
+  agree on the sign of the change. Works from ``target_<var>.nc`` alone.
+- **γ criterion**, :meth:`~StipplingComputer.gamma_significance`: the forced signal exceeds
+  internal variability estimated from piControl runs (γ > 1). Needs a separate piControl
+  ESMValTool run; see :ref:`picontrol_recipe`.
+
+Results are written to ``<work_dir>/stippling/``.
 
 .. autoclass:: StipplingComputer
    :members: beta_significance, gamma_significance
-   :show-inheritance:
 
-The ``StipplingComputer`` class implements two independent significance criteria following Zappa et al. (2021) and Mindlin et al. (2023):
+----
 
-- **β criterion** — computed by :meth:`beta_significance`. Flags gridpoints where ≥ 90% of CMIP6 models agree on the sign of the projected change.
+Helpers
+-------
 
-- **γ criterion** — computed by :meth:`gamma_significance`. Flags gridpoints where the forced signal exceeds internal variability estimated from piControl simulations (γ > 1), using non-overlapping 30-year rolling seasonal means.
+.. autofunction:: stand
 
-.. note::
+.. autofunction:: stand_detr
 
-   :meth:`gamma_significance` requires piControl data preprocessed via a separate ESMValTool recipe. The recipe passes ``target_work_dir`` to the diagnostic script so that ``StipplingComputer`` can locate ``target_pr.nc`` (the forced signal) in the same working directory as the main storypy pipeline.
+.. autofunction:: filtro
 
-   Example diagnostic script (``storypy_picontrol.py``):
-
-   .. code-block:: python
-
-      from esmvaltool.diag_scripts.shared import run_diagnostic
-      from storypy.compute import StipplingComputer
-
-      def main(config):
-          sc = StipplingComputer(
-              work_dir          = config['target_work_dir'],
-              target_variable   = 'pr',
-              picontrol_config  = config,
-              variable_group    = 'pr',
-              season_months     = [11, 12, 1, 2, 3],  # NDJFM
-              variant_selection = 'mean',
-          )
-          sc.gamma_significance(rolling_window=30)
-
-      if __name__ == '__main__':
-          with run_diagnostic() as config:
-              main(config)
-
-   The script is run via:
-
-   .. code-block:: bash
-
-      esmvaltool run --config_file /path/to/config-user.yml /path/to/picontrol_recipe.yml
-
-   Outputs are saved to ``{work_dir}/stippling/``:
-
-   - ``gamma_forced_CMIP6.nc`` — median γ ratio across models
-   - ``summatory_denom_CMIP6.nc`` — sum of 1/σ² weights
-
-.. warning::
-
-   piControl data must cover the full global domain. If piControl files use a 0–360° longitude convention, ``gamma_significance()`` automatically re-wraps longitudes to −180/180° before computing the signal-to-noise ratio to ensure correct spatial alignment with ``target_pr.nc``.
+.. autofunction:: replace_nans_with_zero

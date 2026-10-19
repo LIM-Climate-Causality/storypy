@@ -17,18 +17,18 @@ authors = [
 keywords = ["climate", "storylines", "CMIP6", "regional climate", "uncertainty"]
 dependencies = [
     # core data model + I/O
-    "numpy",
-    "pandas",
-    "xarray",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "xarray>=2023.1",
     "netcdf4",
-    "regionmask",
+    "regionmask>=0.11",
     # statistics
-    "scipy",
-    "statsmodels",
+    "scipy>=1.10",
+    "statsmodels",     # no longer used by storypy itself; kept for notebooks
     "scikit-learn",
     # plotting
-    "matplotlib",
-    "cartopy",
+    "matplotlib>=3.7",
+    "cartopy>=0.22",
     "shapely",
     # progress reporting
     "tqdm",
@@ -38,6 +38,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Atmospheric Science",
@@ -46,13 +47,18 @@ classifiers = [
 [project.optional-dependencies]
 performance = ["dask"]
 paper       = ["adjustText"]
-dev         = ["pytest", "pytest-cov"]
+yaml        = ["pyyaml"]
+test        = ["pytest>=8", "pytest-cov", "pyyaml"]
+dev         = ["storypy[test]", "ruff", "pre-commit", "build", "twine"]
+docs        = ["sphinx>=7", "sphinx-rtd-theme>=2", "myst-parser>=2"]
+# ESMValTool is conda-only; install it with conda, not through this extra.
 
 [project.urls]
 Homepage      = "https://storypy.readthedocs.io/en/latest/"
 Documentation = "https://storypy.readthedocs.io/en/latest/"
 Source        = "https://github.com/LIM-Climate-Causality/storypy"
 Issues        = "https://github.com/LIM-Climate-Causality/storypy/issues"
+Changelog     = "https://github.com/LIM-Climate-Causality/storypy/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -60,13 +66,61 @@ include = ["storypy*"]
 
 [tool.setuptools.package-data]
 storypy = [
-    "*.yml",
-    "*.nc",
-    "*.json",
-    "*.csv",
     "data/regression_output/pr/*",
     "data/regression_output/ua/*",
     "data/remote_drivers/*.csv",
     "data/targets/*.nc",
     "data/drivers/*.nc",
 ]
+
+# ---------------------------------------------------------------------------
+# Testing
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "smoke: fast import/sanity checks; run first in CI",
+    "unit: isolated tests of single functions on tiny synthetic data",
+    "integration: several storypy components together, temporary files",
+    "e2e: full pipeline from raw CMIP-style files to storylines",
+    "slow: takes more than a few seconds",
+    "esmvaltool: needs ESMValTool installed",
+    "network: needs internet access (e.g. cartopy downloads)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:cartopy.*",
+    "ignore:.*Downloading.*:UserWarning",
+]
+
+[tool.coverage.run]
+source = ["storypy"]
+branch = true
+omit = ["storypy/confi.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pragma: no cover",
+]
+
+# ---------------------------------------------------------------------------
+# Linting
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["additional_files", "notebooks", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]
+ignore = ["E501", "E741", "B905", "UP006", "UP035"]
+
+[tool.ruff.lint.per-file-ignores]
+"storypy/evaluate/plot/*" = ["E", "W", "B", "UP", "I", "F841"]   # legacy plotting code, not yet cleaned
+"storypy/compute/_stippling.py" = ["E", "W"]
+"tests/*" = ["B011"]

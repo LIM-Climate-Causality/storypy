@@ -8,7 +8,7 @@ This module provides :func:`compute_regression`, which ties together:
 
 * target fields from a NetCDF file (``target_<var>.nc``), and
 * standardized remote drivers from a CSV file
-  (``storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv``),
+  (``scaled_standardized_drivers.csv``, found anywhere under work_dir (or given as config['driver_csv'])),
 
 and runs a spatial regression SR via :class:`storypy.compute._regres.SpatialRegression`.
 
@@ -17,7 +17,7 @@ Typical workflow
 1. Prepare targets with :class:`storypy.preprocess.ESMValProcessor` or
    :class:`storypy.preprocess.ModelDataPreprocessor`.
 2. Prepare standardized driver indices with
-   :func:`storypy.compute._compute_driver.compute_drivers_from_netcdf`.
+   :func:`storypy.compute.compute_drivers`.
 3. Call :func:`compute_regression` with an ESMValTool-like ``config`` dict.
 
 Example
@@ -42,7 +42,7 @@ def compute_regression(config: dict) -> list[str]:
 
     This function loads a target field from ``target_<var>.nc``, aligns it
     with standardized driver indices from
-    ``storyline_analysis/multiple_regression/remote_drivers/scaled_standardized_drivers.csv``,
+    ``scaled_standardized_drivers.csv``,
     and performs a spatial regression at each gridpoint using
     :class:`storypy.compute._regres.SpatialRegression`.
 
@@ -60,9 +60,7 @@ def compute_regression(config: dict) -> list[str]:
     Returns
     -------
     list of str
-        List containing the path to the regression output file(s).
-        Currently this is a single NetCDF file with regression diagnostics
-        for the specified variable.
+        Paths of the four NetCDF files written to ``<work_dir>/regression_output/<var>/``.
 
     Raises
     ------
@@ -75,10 +73,7 @@ def compute_regression(config: dict) -> list[str]:
 
     Notes
     -----
-    * The driver CSV is expected at::
-
-          <work_dir>/storyline_analysis/multiple_regression/remote_drivers/
-              scaled_standardized_drivers.csv
+    * scaled_standardized_drivers.csv, found anywhere under work_dir (or given as config['driver_csv'])
 
     * The regression is fit across the ``model`` dimension.
 
@@ -159,4 +154,4 @@ def compute_regression(config: dict) -> list[str]:
     output_file = SR.perform_regression(output_path, var)
     print(f"Regression completed for: {var}")
 
-    return [output_file]
+    return output_file

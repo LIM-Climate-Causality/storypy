@@ -1,4 +1,11 @@
-from storypy.utils import np, xr, stats
+from storypy.utils import np, xr, stats, pd
+import regionmask
+
+def _sel_years(data, start, end):
+    """Select start..end on an integer-year axis or a datetime/cftime axis."""
+    if np.issubdtype(data['time'].dtype, np.integer):
+        return data.sel(time=slice(int(str(start)[:4]), int(str(end)[:4])))
+    return data.sel(time=slice(str(start), str(end)))
 
 # Function to compute climatological change
 def extract_metadata(files):
@@ -62,7 +69,7 @@ def seasonal_data_months(data, months):
 
     # Shift December into the following year so DJF groups correctly
     new_years = year_vals[mask].copy()
-    if 12 in months_to_select:
+    if 12 in months_to_select and 1 in months_to_select:
         dec_mask = month_vals[mask] == 12
         new_years[dec_mask] += 1
 
@@ -182,8 +189,8 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
         period2_end = f"{period2[1]}-12"
 
     # Subset data for the two periods
-    period1_data = target.sel(time=slice(int(period1_start), int(period1_end)))
-    period2_data = target.sel(time=slice(int(period2_start), int(period2_end)))
+    period1_data = _sel_years(target, period1_start, period1_end)
+    period2_data = _sel_years(target, period2_start, period2_end)
 
     if preserve_time_series:
         if region_method == 'box' and box:
@@ -192,7 +199,7 @@ def clim_change(target, period1, period2, region_method='box', box=None, region_
         elif region_method == 'mask' and region_id is not None:
             target = apply_region_mask(target, region_id, lat_dim=lat_dim, lon_dim=lon_dim)
         # Preserve the time dimension
-        output = target.sel(time=slice(int(period1_start), int(period2_end)))
+        output = _sel_years(target, period1_start, period2_end)
     else:
         # Collapse time dimension
         output = period2_data.mean(dim='time') - period1_data.mean(dim='time')

@@ -1,30 +1,25 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
+# Sphinx configuration for the storypy documentation.
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# docs/source/conf.py
 import os
 import sys
 from datetime import datetime
 
-# --- Paths --------------------------------------------------------------------
-# Assuming this file lives in docs/source/, put the repo root on sys.path
+# Repo root on sys.path, so a source checkout builds without installing.
 sys.path.insert(0, os.path.abspath("../.."))
 
 # --- Project info -------------------------------------------------------------
 project = "storypy"
-author = "Leipzig Institute for Meteorology (LIM)"
-copyright = f"{datetime.now():%Y}, {author}"
-release = ""   # e.g. "1.0.0" if you want it shown
-version = release
+author = "Richard Alawode, Julia Mindlin, Marlene Kretschmer"
+copyright = f"{datetime.now():%Y}, Leipzig Institute for Meteorology (LIM)"
+
+try:
+    from importlib.metadata import version as _version
+
+    release = _version("storypy")
+except Exception:  # building from a checkout that is not installed
+    release = ""
+version = ".".join(release.split(".")[:2])
 
 # --- General configuration ----------------------------------------------------
 extensions = [
@@ -34,7 +29,11 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
+    "myst_parser",          # Markdown pages (CHANGELOG.md, CONTRIBUTING.md)
 ]
+
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
+myst_heading_anchors = 3
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -44,72 +43,48 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
 }
+intersphinx_timeout = 30
 
-# If your modules import heavy/optional deps, mock them so RTD can import
-autodoc_mock_imports = [
-    "esmvaltool",
-    "xarray", "netCDF4", "cartopy",
-    "dask", "cfgrib", "cftime", "zarr", "eccodes",
-    "numpy", "pandas", "scipy", "sklearn",
-    "matplotlib", "xesmf", "yaml", "pooch",
-    "statsmodels",
-]
+# Only ESMValTool is mocked: it is conda-only, and storypy imports it lazily.
+# Everything else is installed on Read the Docs (see .readthedocs.yaml), so the
+# API pages show real signatures and defaults. Mocking numpy/xarray used to make
+# the plotting modules fail to import, leaving their pages empty.
+autodoc_mock_imports = ["esmvaltool"]
 
-# Generate autosummary stub pages for modules/classes/functions
 autosummary_generate = True
-
-# Autodoc defaults (sane, readable API pages)
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
 }
-
-# Type hints—keep signatures clean but show hints in the description block
 autodoc_typehints = "description"
-autodoc_typehints_format = "fully-qualified"
+autoclass_content = "class"
 
-autoclass_content = "both"
-
-# Napoleon (NumPy/Google style) settings
-napoleon_google_docstring = False   # you’re likely using NumPy style
+napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_attr_annotations = True
 
-
 templates_path = ["_templates"]
 exclude_patterns = []
-todo_include_todos = False
 
 # --- HTML output --------------------------------------------------------------
 html_theme = "sphinx_rtd_theme"
+html_title = f"storypy {release}" if release else "storypy"
 html_static_path = []
-html_extra_path = ["images"]
+# Copied to the site root: logos and the Google Search Console verification file.
+html_extra_path = ["images", "google0b2594d760cfdda3.html"]
 html_theme_options = {
     "collapse_navigation": False,
-    "navigation_depth": 4,
+    "navigation_depth": 3,
     "sticky_navigation": True,
-    "titles_only": False,
 }
-
-def setup(app):
-    import importlib, traceback
-    targets = [
-        "storypy.preprocess._esmval_processor",
-        "storypy.preprocess._netcdf_processor",
-        "storypy.compute._compute_driver",
-        "storypy.compute._mlr",
-        "storypy.compute._regres",
-    ]
-    for mod in targets:
-        try:
-            importlib.import_module(mod)
-            print(f"[autodoc] import ok: {mod}")
-        except Exception as e:
-            print(f"[autodoc] IMPORT FAILED: {mod} -> {e}")
-            traceback.print_exc()
-
+html_context = {
+    "display_github": True,
+    "github_user": "LIM-Climate-Causality",
+    "github_repo": "storypy",
+    "github_version": "main",
+    "conf_py_path": "/docs/source/",
+}

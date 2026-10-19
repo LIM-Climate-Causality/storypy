@@ -593,10 +593,12 @@ class ModelDataPreprocessor:
         """
         os.makedirs(self.driver_work_dir, exist_ok=True)
         for var in self.driver_short_names:
-            if self.driver_data[var]:
-                da_all = xr.concat(self.driver_data[var], dim='model', coords='minimal', compat='override')
-                ens_mean = da_all.mean(dim='model')
-                ds_out   = xr.Dataset({
+            if not self.driver_data.get(var):
+                print(f"No driver data for {var}; nothing written.")
+                continue
+            da_all = xr.concat(self.driver_data[var], dim='model', coords='minimal', compat='override')
+            ens_mean = da_all.mean(dim='model')
+            ds_out   = xr.Dataset({
                 f"{var}":      da_all,
                 f"{var}_mean": ens_mean,
             })
@@ -610,9 +612,9 @@ class ModelDataPreprocessor:
                 )
                 ds_out[std_key] = da_std
 
-                outpath = os.path.join(self.driver_work_dir, f'remote_driver_{var}.nc')
-                ds_out.to_netcdf(outpath)
-                print(f"Saved remote driver output for {var} to {outpath}")
+            outpath = os.path.join(self.driver_work_dir, f'remote_driver_{var}.nc')
+            ds_out.to_netcdf(outpath)
+            print(f"Saved remote driver output for {var} to {outpath}")
     
     def _plot_timeseries(self):
         """
