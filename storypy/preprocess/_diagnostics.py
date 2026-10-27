@@ -59,7 +59,7 @@ def seasonal_data_months(data, months):
         month_vals = data['time'].dt.month.values
         year_vals  = data['time'].dt.year.values
     else:
-        # cftime index — extract directly, no calendar conversion needed
+        # cftime index - extract directly, no calendar conversion needed
         month_vals = np.array([t.month for t in time_index])
         year_vals  = np.array([t.year  for t in time_index])
 

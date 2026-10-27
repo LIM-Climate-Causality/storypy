@@ -63,10 +63,10 @@ def bivariate_dist(confidence_level=0.8, n_drivers=2, r=0.0):
     c = chi2.ppf(confidence_level, df=n_drivers)
 
     if r == 0.0:
-        # As in Zappa & Shepherd (2017) — single symmetric coefficient r=0 (means independent drivers)
+        # As in Zappa & Shepherd (2017) - single symmetric coefficient r=0 (means independent drivers)
         return float(np.sqrt(c / n_drivers))
     else:
-        # As in Mindlin et al. (2020) and Monerie et al. (2023) — correlated drivers, two coefficients
+        # As in Mindlin et al. (2020) and Monerie et al. (2023) - correlated drivers, two coefficients
         i1 = float(np.sqrt((1 - r**2) / (2 * (1 - r)) * c))  # same direction
         i2 = float(np.sqrt((1 - r**2) / (2 * (1 + r)) * c))  # opposing
         return i1, i2
@@ -105,7 +105,7 @@ def storyline_evaluation(main_config, target, drivers,
         ]
 
     elif coeffs_high is not None and coeffs_low is not None:
-        # Data-driven quantiles — different value per driver
+        # Data-driven quantiles - different value per driver
         ch = coeffs_high
         cl = coeffs_low
         storylines = [
@@ -323,6 +323,19 @@ def _broadcast(value, n):
     return list(value)
 
 
+def _map_aspect(projection, extent):
+    """Height/width of a map with this projection and extent, as cartopy draws it."""
+    fig = plt.figure()
+    try:
+        ax = fig.add_axes([0, 0, 1, 1], projection=projection)
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        return abs(y1 - y0) / abs(x1 - x0)
+    finally:
+        plt.close(fig)
+
+
 def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                         colorbar_label='Colorbar Label',
                         white_pct=0.05,
@@ -331,60 +344,102 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                         season_label=None,
                         panel_labels=None,
                         panel_letters=('a', 'b', 'd', 'e', 'c'),
+                        letter_position='outside',
+                        driver_labels=None,
                         show_gridlines=False,
                         show_gridlabels=None,
                         n_lon_ticks=None,
                         n_lat_ticks=None,
                         panel_width=2.6,
                         panel_height=None,
-                        col_gap=0.5,
-                        row_gap=0.55,
-                        margin=0.3,
-                        top_margin=0.35,
-                        bottom_margin=0.9,
+                        col_gap=None,
+                        row_gap=None,
+                        margin=None,
+                        top_margin=None,
+                        bottom_margin=None,
                         font_family='serif',
                         font_size=10,
-                        dpi=300):
+                        dpi=300,
+                        show=True):
     """
+    Plot four storylines around the multi-model mean in a diamond layout.
+
+    The layout encodes the two storyline drivers: the left column has the low
+    value of the first driver and the right column the high value; the top row
+    has the high value of the second driver and the bottom row the low value.
+    The multi-model mean sits in the middle.
+
     Parameters
     ----------
+    map_data : sequence of 5 xarray.DataArray
+        In the order returned by :func:`storyline_evaluation`:
+        [high d1 low d0, high d1 high d0, low d1 low d0, low d1 high d0, MEM],
+        drawn top-left, top-right, bottom-left, bottom-right, centre.
+    extents : sequence of 5 [lon_min, lon_max, lat_min, lat_max]
+    levels : sequence of 5 arrays of contour levels
+    colormaps : sequence of 5 colormap names
+    titles : sequence of 5 str
+        Panel titles, shown after the panel letter above each panel.
+    colorbar_label : str
     white_pct : float
-        Fraction of the total colorbar range to render as white around zero.
-        Default 0.05 (±5% of range); 0.0 disables the white band.
-    projection : cartopy.crs.Projection or None
-        Axes projection for every panel. Defaults to ccrs.PlateCarree()
-        (rectangular sector map). Pass e.g. ccrs.NorthPolarStereo() for a
-        hemispheric view; pair with circular_boundary=True for a round panel.
+        Fraction of the colour range around zero drawn white. 0 disables it.
+    projection : cartopy.crs.Projection, optional
+        Default ``PlateCarree()``. Use e.g. ``NorthPolarStereo()`` with
+        ``circular_boundary=True`` for round hemispheric panels.
     circular_boundary : bool
-        Clip each panel to a circle instead of the default rectangle.
-        Meaningful only with a polar projection.
-    season_label : str, list of 5 str, or None
-        Upper-left corner text outside each panel (e.g. "JJA", "MJJASO").
-        A single string is applied to all 5 panels.
-    panel_labels : list of 5 str, or None
-        Upper-right corner text outside each panel (e.g. "Storyline 1",
-        "Storyline 2", "Multi-model mean", "Storyline 3", "Storyline 4"),
-        in the same [(0,0),(0,2),(2,0),(2,2),(1,1)] panel order as `titles`.
-    panel_letters : sequence of 5 str, or None
-        Boxed letter annotation inside the top-left of each panel. None
-        omits it.
-    show_gridlines : bool
-        Draw the dashed lat/lon gridlines. Default False.
-    show_gridlabels : bool
-        Draw the degree tick labels (e.g. "100E", "10N"). Default True -
-        independent of show_gridlines, so labels can stay while lines go.
-    wspace, hspace : float
-        GridSpec spacing between panels. hspace defaults to a small
-        positive value rather than 0 to leave room for season_label/
-        panel_labels sitting above each row; set to 0.0 if you don't use
-        those and want panels touching vertically too.
+        Clip each panel to a circle (for polar projections).
+    season_label : str or sequence of 5 str, optional
+        A single string is written once, top-left of the figure; a list adds
+        it to each panel's header.
+    panel_labels : sequence of 5 str, optional
+        Right-aligned header text per panel, e.g. "Storyline 1", ...,
+        "Multi-model mean".
+    panel_letters : sequence of 5 str or None
+        Bold panel letters, default a, b, d, e, c (reading order of the
+        diamond). None omits them.
+    letter_position : {'outside', 'inside'}
+        'outside' (default) puts the letter in the header line above the
+        panel, so it never covers data, for both rectangular and circular
+        panels. 'inside' keeps the boxed letter in the top-left corner of the
+        map (the previous behaviour).
+    driver_labels : (str, str), optional
+        Names of the first and second storyline drivers, e.g.
+        ``("Tropical warming", "Polar vortex")``. Draws arrows showing in which
+        direction each driver increases, in the empty space beside the MEM
+        panel.
+    show_gridlines, show_gridlabels : bool
+        Dashed lat/lon lines; degree labels on the left and bottom edges
+        (default: labels on, except for circular panels).
+    n_lon_ticks, n_lat_ticks : int, optional
+        Approximate number of degree labels. By default the number of
+        longitude labels scales with ``panel_width`` so they do not overlap.
+    panel_width : float
+        Width of each map in inches.
+    panel_height : float, optional
+        Height of each map in inches. Default: computed from the projection
+        and extent, so no space is left empty around the map.
+    col_gap, row_gap, margin, top_margin, bottom_margin : float, optional
+        Spacing in inches. Defaults are computed from ``font_size`` and from
+        whether degree labels are drawn.
+    font_family, font_size :
+        Text style.
+    dpi : int
+        Figure resolution; also used when saving with ``fig.savefig``.
+        The layout is defined in inches, so dpi changes only the pixel
+        density, not the arrangement.
+    show : bool
+        Call ``plt.show()``. Set False to adjust or save the figure first.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
     """
     if projection is None:
         projection = ccrs.PlateCarree()
     if show_gridlabels is None:
         show_gridlabels = not circular_boundary
-    if panel_height is None:
-        panel_height = panel_width
+    if letter_position not in ('outside', 'inside'):
+        raise ValueError("letter_position must be 'outside' or 'inside'")
     boundary = _circular_boundary() if circular_boundary else None
 
     n_panels = 5
@@ -393,40 +448,48 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
     corner_labels = _broadcast(panel_labels, n_panels)
     letters = list(panel_letters) if panel_letters is not None else [None] * n_panels
 
-    # --- Figure size computed FROM the panel geometry, in inches
-    fig_w_in = 2 * margin + 2 * panel_width + col_gap
+    # --- Geometry, in inches -------------------------------------------------
+    if panel_height is None:
+        aspect = 1.0 if circular_boundary else max(
+            _map_aspect(projection, e) for e in extents)
+        panel_height = panel_width * aspect
+
+    line_h  = 1.5 * (font_size + 1) / 72          # one line of header text
+    lat_w   = 0.45 * font_size / 10 if show_gridlabels else 0.0   # "60°N" left of a map
+    lon_h   = 0.25 * font_size / 10 if show_gridlabels else 0.0   # "25°E" below a map
+    cbar_block = 0.15 + 2.6 * font_size / 72 + 0.1                # bar, ticks, label
+
+    margin        = (lat_w + 0.08) if margin is None else margin
+    col_gap       = (lat_w + 0.2) if col_gap is None else col_gap
+    row_gap       = (lon_h + line_h + 0.08) if row_gap is None else row_gap
+    top_margin    = (line_h * (2 if single_season else 1) + 0.05) if top_margin is None else top_margin
+    bottom_margin = (lon_h + cbar_block + 0.15) if bottom_margin is None else bottom_margin
+
+    fig_w_in = margin + 2 * panel_width + col_gap + 0.08
     fig_h_in = top_margin + 3 * panel_height + 2 * row_gap + bottom_margin
 
-    # --- Panel rects, in inches, then converted to figure fractions.
-    #     x-fractions divide by fig_w_in, y-fractions by fig_h_in.
-    left_x_in   = margin
-    right_x_in  = fig_w_in - margin - panel_width
-    center_x_in = fig_w_in / 2 - panel_width / 2
-
-    row_top_y_in = fig_h_in - top_margin - panel_height
-    row_mid_y_in = row_top_y_in - row_gap - panel_height
-    row_bot_y_in = row_mid_y_in - row_gap - panel_height   # == bottom_margin, by construction
+    left_x   = margin
+    right_x  = margin + panel_width + col_gap
+    center_x = (left_x + right_x) / 2
+    top_y    = fig_h_in - top_margin - panel_height
+    mid_y    = top_y - row_gap - panel_height
+    bot_y    = mid_y - row_gap - panel_height
 
     def rect(x_in, y_in):
         return (x_in / fig_w_in, y_in / fig_h_in,
                 panel_width / fig_w_in, panel_height / fig_h_in)
 
-    # Order matches [corner1, corner2, corner3, corner4, mean] and the
-    # default panel_letters ('a','b','d','e','c').
-    rects = [
-        rect(left_x_in,   row_top_y_in),   # a, top-left
-        rect(right_x_in,  row_top_y_in),   # b, top-right
-        rect(left_x_in,   row_bot_y_in),   # d, bottom-left
-        rect(right_x_in,  row_bot_y_in),   # e, bottom-right
-        rect(center_x_in, row_mid_y_in),   # c, center
-    ]
+    # Order matches storyline_evaluation and the default letters a, b, d, e, c.
+    rects = [rect(left_x, top_y), rect(right_x, top_y),
+             rect(left_x, bot_y), rect(right_x, bot_y),
+             rect(center_x, mid_y)]
 
     with plt.rc_context({'font.family': font_family, 'font.size': font_size}):
         fig = plt.figure(figsize=(fig_w_in, fig_h_in), dpi=dpi)
 
         if single_season:
-            fig.text(margin / fig_w_in, 1 - (top_margin * 0.4) / fig_h_in,
-                      season_label, ha='left', va='center', fontsize=font_size)
+            fig.text(left_x / fig_w_in, 1 - 0.05 / fig_h_in, season_label,
+                     ha='left', va='top', fontsize=font_size + 1, fontweight='bold')
 
         im = None
         for i, r in enumerate(rects):
@@ -439,38 +502,57 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
 
             if show_gridlines or show_gridlabels:
                 gl = ax.gridlines(draw_labels=show_gridlabels,
-                                   linewidth=0.5, color='gray', alpha=0.5,
-                                   linestyle='--')
+                                  linewidth=0.5, color='gray', alpha=0.5,
+                                  linestyle='--')
                 gl.xlines = show_gridlines
                 gl.ylines = show_gridlines
-                for attr, val in (('top_labels', False), ('right_labels', False)):
+                for attr in ('top_labels', 'right_labels'):
                     try:
-                        setattr(gl, attr, val)
+                        setattr(gl, attr, False)
                     except AttributeError:
                         pass
+                if n_lon_ticks is None and not circular_boundary:
+                    # about one label per 0.65 in, so labels never run together
+                    n_lon_ticks = max(3, round(panel_width / 0.65))
                 if n_lon_ticks is not None:
                     gl.xlocator = mticker.MaxNLocator(n_lon_ticks)
                 if n_lat_ticks is not None:
                     gl.ylocator = mticker.MaxNLocator(n_lat_ticks)
+                # cartopy draws these labels at render time, outside rc_context
+                label_style = {'family': font_family, 'size': font_size - 1}
+                gl.xlabel_style = label_style
+                gl.ylabel_style = label_style
 
-            if season_labels[i] is not None:
-                ax.text(0.0, 1.02, season_labels[i], transform=ax.transAxes,
+            # --- Header: one line above the panel, never on the data -------
+            header_y = 1.0 + 0.04 / panel_height
+            left_anchor = None
+            if letters[i] is not None and letter_position == 'outside':
+                left_anchor = ax.text(0.0, header_y, f"{letters[i]})",
+                                      transform=ax.transAxes, ha='left',
+                                      va='bottom', fontsize=font_size + 1,
+                                      fontweight='bold')
+            if left_anchor is not None:
+                ax.annotate(titles[i], xy=(1, 0), xycoords=left_anchor,
+                            xytext=(4, 0), textcoords='offset points',
+                            ha='left', va='bottom', fontsize=font_size + 1)
+            else:
+                ax.text(0.0, header_y, titles[i], transform=ax.transAxes,
                         ha='left', va='bottom', fontsize=font_size + 1)
-            if corner_labels[i] is not None:
-                ax.text(1.0, 1.02, corner_labels[i], transform=ax.transAxes,
-                        ha='right', va='bottom', fontsize=font_size + 1)
-            ax.text(0.5, 1.14, titles[i], transform=ax.transAxes,
-                    ha='center', va='bottom', fontsize=font_size + 1)
+            right_text = " · ".join(t for t in (season_labels[i], corner_labels[i]) if t)
+            if right_text:
+                ax.text(1.0, header_y, right_text, transform=ax.transAxes,
+                        ha='right', va='bottom', fontsize=font_size,
+                        color='0.3')
 
-            if letters[i] is not None:
-                ax.text(0.035, 0.92, f"{letters[i]})", transform=ax.transAxes,
+            if letters[i] is not None and letter_position == 'inside':
+                ax.text(0.035, 0.96, f"{letters[i]})", transform=ax.transAxes,
                         ha='left', va='top', fontsize=font_size + 1,
                         fontweight='bold',
                         bbox=dict(boxstyle='square,pad=0.25', facecolor='white',
                                   edgecolor='black', linewidth=0.8),
                         zorder=10)
 
-            data        = map_data[i]
+            data         = map_data[i]
             color_levels = levels[i]
             plot_range   = max(abs(color_levels[0]), abs(color_levels[-1]))
             tick_levels  = color_levels[::2]
@@ -502,24 +584,51 @@ def plot_storyline_map(map_data, extents, levels, colormaps, titles,
                 extend='both', transform=ccrs.PlateCarree()
             )
 
+        # --- Driver arrows in the empty space beside the MEM panel ----------
+        if driver_labels is not None:
+            x_label, y_label = driver_labels
+            arrow = dict(arrowstyle='-|>', color='0.35', lw=1.2,
+                         shrinkA=0, shrinkB=0)
+            flank_w = center_x - left_x - 0.1          # free width left of MEM
+            pad = 0.1
+            # second driver increases upwards (top row = high): left flank
+            ax_x = (left_x + flank_w * 0.55) / fig_w_in
+            fig.add_artist(mpl.patches.FancyArrowPatch(
+                (ax_x, (mid_y + pad) / fig_h_in),
+                (ax_x, (mid_y + panel_height - pad) / fig_h_in),
+                transform=fig.transFigure, mutation_scale=12, **arrow))
+            fig.text(ax_x - 0.08 / fig_w_in, (mid_y + panel_height / 2) / fig_h_in,
+                     y_label, rotation=90, ha='right', va='center',
+                     fontsize=font_size, color='0.25')
+            # first driver increases to the right (right column = high): right flank
+            rx0 = (center_x + panel_width + 0.15) / fig_w_in
+            rx1 = (right_x + panel_width - 0.15) / fig_w_in
+            ry = (mid_y + panel_height / 2) / fig_h_in
+            fig.add_artist(mpl.patches.FancyArrowPatch(
+                (rx0, ry), (rx1, ry), transform=fig.transFigure,
+                mutation_scale=12, **arrow))
+            fig.text((rx0 + rx1) / 2, ry + 0.06 / fig_h_in, x_label,
+                     ha='center', va='bottom', fontsize=font_size, color='0.25')
+
         if im:
             cbar_w_in = 2 * panel_width + col_gap
             cbar_h_in = 0.15
-            cbar_y_in = bottom_margin * 0.35
+            cbar_y_in = bottom_margin - lon_h - 0.15 - cbar_h_in
             cbar_ax = fig.add_axes([
-                (fig_w_in / 2 - cbar_w_in / 2) / fig_w_in,
+                left_x / fig_w_in,
                 cbar_y_in / fig_h_in,
                 cbar_w_in / fig_w_in,
                 cbar_h_in / fig_h_in,
             ])
             cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal',
-                                 ticks=tick_levels)
+                                ticks=tick_levels)
             cbar.ax.xaxis.set_major_formatter(
                 FuncFormatter(lambda x, _: f'{x:.1f}')
             )
             cbar.set_label(colorbar_label)
 
-        plt.show()
+        if show:
+            plt.show()
         return fig
 
 def plot_map(data, levels, extent, cmap, title, colorbar_label='Colorbar Label'):

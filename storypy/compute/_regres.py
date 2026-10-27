@@ -485,10 +485,10 @@ class SpatialRegression(object):
                 im=ax.contourf(lon_c, lat, var_c,clevels,transform=data_crs,cmap='RdBu_r',extend='both')
             if maps_pval[k].min() < 0.05:
                 levels = [0,0.05,1]
-                ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
+                ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", None], alpha=0)
             elif maps_pval[k].min() < 0.10:
                 levels = [0,0.10,1]
-                ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", " "], alpha=0)
+                ax.contourf(maps_pval[k].lon, lat, maps_pval[k].values,levels, transform=data_crs,levels=levels, hatches=["...", None], alpha=0)
             else:
                 print('No significant values for ',self.regressor_names[k])
             plt.title(self.regressor_names[k],fontsize=18)

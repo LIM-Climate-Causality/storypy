@@ -240,18 +240,27 @@ class StipplingComputer:
         self,
         rolling_window: int = 30,
     ):
-        """
-        Compute signal-to-noise stippling mask (gamma criterion).
+        r"""
+        Compute the signal-to-noise stippling field (gamma criterion).
 
-        Saves two NetCDF files under ``{work_dir}/stippling/``:
+        For each model ``m`` the forced response ``beta_m`` (from
+        ``target_<var>.nc``) is compared with the internal variability
+        ``sigma_m^2``, the variance of non-overlapping ``rolling_window``-year
+        means of the piControl run:
 
-        - ``gamma_forced_CMIP6.nc`` : signal-to-noise ratio
-          gamma = sqrt(mean over models of beta_m^2 / sigma_m^2), where
-          beta_m is the forced response of model m and sigma_m^2 the variance
-          of its non-overlapping ``rolling_window``-year piControl means.
-        - ``summatory_denom_CMIP6.nc`` : sum of ``1 / sigma_m^2`` across all
-          models, used as the denominator weight in the Mindlin et al. (2023)
-          significance formula.
+        .. math::
+
+            \gamma = \sqrt{\frac{1}{M}\sum_m \frac{\beta_m^2}{\sigma_m^2}}
+
+        (Zappa et al. 2021, eq. A1, with the bias term set to zero because
+        seasonal means are used). Gridpoints with ``gamma > 1`` have a forced
+        signal larger than internal variability.
+
+        Two files are written to ``{work_dir}/stippling/``:
+
+        - ``gamma_forced_CMIP6.nc``: the gamma field above.
+        - ``summatory_denom_CMIP6.nc``: sum over models of ``1 / sigma_m^2``,
+          the weight used in the Mindlin et al. (2023) formula.
 
         Parameters
         ----------

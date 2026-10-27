@@ -119,7 +119,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
                         subplot_kw={'projection': proj},
                         constrained_layout=True)
 
-    # Robinson shows full globe — no set_extent needed
+    # Robinson shows full globe - no set_extent needed
     if projection == 'platecarree' and map_extent is not None:
         ax.set_extent(map_extent, crs=ccrs.PlateCarree(central_longitude=central_longitude))
     elif projection == 'platecarree':
@@ -154,10 +154,10 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
     if positives_model is not None and negatives_model is not None \
             and p_values is not None:
 
-        # Beta mask — models agree on sign ------------------------------------------------------------------
+        # Beta mask - models agree on sign ------------------------------------------------------------------
         beta_mask  = (positives_model_da + negatives_model_da) == sig
 
-        # Gamma mask — signal large relative to noise
+        # Gamma mask - signal large relative to noise
         gamma_mask = p_values < sig_level
 
         # Align gamma to beta grid if needed
@@ -204,7 +204,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
             )
 
     elif positives_model is not None and negatives_model is not None:
-        # Beta only — filled dots
+        # Beta only - filled dots
         combined = (positives_model_da + negatives_model_da) == sig
         lon2d, lat2d = np.meshgrid(
             positives_model_da['lon'].values,
@@ -222,7 +222,7 @@ def plot_function(target_change, p_values, positives_model, negatives_model, reg
         )
 
     elif p_values is not None and p_values.size > 0:
-        # Gamma only — open circles
+        # Gamma only - open circles
         gamma_mask = p_values < sig_level
         lon2d, lat2d = np.meshgrid(
             p_values['lon'].values,
@@ -481,7 +481,7 @@ def plot_anomaly_series(
             ).mean(dim='time')
             anomaly = region - baseline
 
-            # 30-yr rolling mean — store with actual time coordinate
+            # 30-yr rolling mean - store with actual time coordinate
             rm = (anomaly
                   .rolling(time=rolling_window, center=True, min_periods=1)
                   .mean())
@@ -585,7 +585,7 @@ def plot_anomaly_series(
                                 markerfacecolor='#1F78B4',
                                 markeredgecolor='none', alpha=0.5),
         )
-        # MEM dot only — no per-model scatter
+        # MEM dot only - no per-model scatter
         ax_box.scatter([1], [float(np.nanmean(eoc_arr))],
                     color='#08306B', s=25, zorder=6, linewidths=0)
 

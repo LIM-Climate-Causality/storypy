@@ -281,7 +281,7 @@ def compute_drivers(driver_config):
                         da_model = da_model.weighted(weights).mean(('lat', 'lon'))
                     val = float(da_model.item())
 
-                    # GW — same treatment
+                    # GW - same treatment
                     gw_model = gw_vals.sel(model=model)
                     if 'time' in gw_model.dims:
                         gw_model = gw_model.mean('time')
@@ -356,7 +356,7 @@ def compute_drivers(driver_config):
                     except Exception:
                         std_vals.append(0.0)
                 errors_raw[sn] = std_vals
-                # Scale by GW — reuse gw_vals already in scope
+                # Scale by GW - reuse gw_vals already in scope
                 gw_array = np.array([
                     float(gw_vals.sel(model=m))
                     if m in gw_vals['model'].values else np.nan
@@ -442,7 +442,7 @@ def _collect_scalar_drivers(meta, work_dir,
         'last', 'first', or 'mean'. See driver_indices docstring.
     season_months : list[int] or None
         If None (default), data is assumed to be already seasonally
-        averaged by ESMValTool — just take .mean(dim='time').
+        averaged by ESMValTool - just take .mean(dim='time').
         If a list (e.g. [12,1,2]), raw monthly data is expected and
         seasonal selection + anomaly + future-period subsetting is
         applied using ref_period and future_period.
@@ -492,7 +492,7 @@ def _collect_scalar_drivers(meta, work_dir,
 
                 if "time" in da.dims:
                     if season_months is not None and da.sizes["time"] > 100:
-                        # Raw monthly data — apply full preprocessing
+                        # Raw monthly data - apply full preprocessing
                         # chain using parameters from config
                         da = seasonal_data_months(da, season_months)
                         ref = da.sel(
@@ -505,7 +505,7 @@ def _collect_scalar_drivers(meta, work_dir,
                                        int(future_period[1]))
                         )
                     # Either pre-averaged by ESMValTool (season_months=None)
-                    # or now reduced to future anomaly — take time mean
+                    # or now reduced to future anomaly - take time mean
                     val = float(da.mean(dim="time", skipna=True).item())
                 else:
                     val = float(da.item()) if da.size == 1 \
@@ -659,7 +659,7 @@ def driver_indices(config):
     if "gw" in regressor_names:
         regressor_names.remove("gw")
 
-    # Remove _std keys — handled separately by _save_driver_errors
+    # Remove _std keys - handled separately by _save_driver_errors
     regressor_names = [r for r in regressor_names if not r.endswith("_std")]
 
     regressors_scaled = {}

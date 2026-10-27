@@ -5,8 +5,6 @@ Notable changes to storypy. Format: [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 
 ### Fixed
-- `import storypy.compute` and `import storypy.evaluate.plot` failed: they imported
-  `_leave_one_out`, `_jet_index` and `_plot_loo`, which were never committed.
 - The package needed ESMValTool at import time. It is now only needed by `parse_config` and the
   ESMValTool diagnostic entry point; `storypy._compat.group_metadata` works with or without it.
 - Relative importance called an undefined R object (`robjects`). The error was hidden by a bare

@@ -402,14 +402,14 @@ class ModelDataPreprocessor:
             hist = xr.concat(ens_hist, dim='ensemble')
             scen = xr.concat(ens_scen, dim='ensemble')
 
-            # Align ensemble dimension — use only members present in both
+            # Align ensemble dimension - use only members present in both
             # hist and scen (some models have different member counts)
             n_hist = hist.sizes['ensemble']
             n_scen = scen.sizes['ensemble']
             n_common = min(n_hist, n_scen)
             if n_hist != n_scen:
                 print(f"  {model}: hist={n_hist} members, "
-                      f"scen={n_scen} members — using first {n_common}")
+                      f"scen={n_scen} members - using {n_common} member")
                 hist = hist.isel(ensemble=slice(0, n_common))
                 scen = scen.isel(ensemble=slice(0, n_common))
 
@@ -430,7 +430,7 @@ class ModelDataPreprocessor:
                     seasonal = seasonal * 86400
 
                 if short_name == 'gw':
-                    # GW uses global cosine-weighted mean — no regional box
+                    # GW uses global cosine-weighted mean - no regional box
                     lat_weights = np.cos(np.deg2rad(seasonal['lat']))
                     gw_global   = seasonal.weighted(lat_weights).mean(('lat', 'lon'))
                     da = clim_change(
@@ -441,7 +441,7 @@ class ModelDataPreprocessor:
                         preserve_time_series=False
                     )
                 else:
-                    # Standard driver — apply regional box
+                    # Standard driver - apply regional box
                     da = clim_change(
                         seasonal,
                         period1=driver_period1,
