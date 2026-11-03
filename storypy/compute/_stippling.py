@@ -339,7 +339,8 @@ class StipplingComputer:
                 # (both are inter-annual variance of seasonal means)
                 # f_bar = sigma_hat^2/sigma^2 = 1, so we set it to 0
                 # reducing A1 to: gamma = sqrt(mean(beta_m^2/sigma_hat_m^2))
-                sigma_m2 = sigma_hat_m2
+                sigma_m2 = sigma_hat_m2 # comment this out
+                # sigma_m2 = da.var(dim='time')   # (lat, lon)
 
                 # Wrap lons to -180/180 before interp
                 if sigma_m2['lon'].values.max() > 180:
@@ -419,7 +420,12 @@ class StipplingComputer:
         mean_ratio  = ratio_stack.mean(dim='model')
 
         # Step 2: f_bar = 0 since sigma_hat^2 = sigma^2 with seasonal mean data
-        f_bar = xr.zeros_like(mean_ratio)
+        f_bar = xr.zeros_like(mean_ratio) # optional
+        # sigma_hat_sq_stack = xr.concat(sigma_hat_sq_list, dim='model')
+        # sigma_sq_stack     = xr.concat(sigma_sq_list, dim='model')
+        # sigma_hat_sq_mean  = sigma_hat_sq_stack.mean(dim='model')
+        # sigma_sq_mean      = sigma_sq_stack.mean(dim='model')
+        # f_bar = sigma_hat_sq_mean / sigma_sq_mean
 
         # Step 3: gamma_forced = sqrt( mean_ratio - 2*f_bar )
         inner        = mean_ratio - 2 * f_bar
